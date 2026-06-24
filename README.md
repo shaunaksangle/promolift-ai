@@ -41,6 +41,10 @@ The final goal is to recommend coupon targeting strategies that improve incremen
 - Streamlit for an interactive project demo
 - Jupyter notebooks for exploration and storytelling
 
+## Dataset
+
+This project uses the Hillstrom Email Marketing dataset, a real marketing experiment dataset with customer features, campaign assignment, and post-campaign outcomes. For the first version, we compare `Mens E-Mail` as the treatment group against `No E-Mail` as the control group. The main outcome is `conversion`, and the processed dataset is saved at `data/processed/hillstrom_mens_email.csv`.
+
 ## Planned Project Stages
 
 1. Project setup and repository structure
