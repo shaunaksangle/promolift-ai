@@ -45,6 +45,10 @@ The final goal is to recommend coupon targeting strategies that improve incremen
 
 This project uses the Hillstrom Email Marketing dataset, a real marketing experiment dataset with customer features, campaign assignment, and post-campaign outcomes. For the first version, we compare `Mens E-Mail` as the treatment group against `No E-Mail` as the control group. The main outcome is `conversion`, and the processed dataset is saved at `data/processed/hillstrom_mens_email.csv`.
 
+## Exploratory Data Analysis
+
+The EDA compares `Mens E-Mail` treatment customers against `No E-Mail` control customers. It calculates conversion lift, visit lift, and spend differences, then saves segment-level analysis under `reports/eda/` and charts under `reports/figures/`. This analysis motivates why uplift modeling is needed instead of only predicting who is likely to buy.
+
 ## Planned Project Stages
 
 1. Project setup and repository structure

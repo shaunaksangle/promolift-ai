@@ -56,3 +56,6 @@ Thumbs.db
 # IDE settings
 .idea/
 .vscode/
+
+# Keep portfolio-ready report figures
+!reports/figures/*.png
