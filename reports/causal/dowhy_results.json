@@ -1,9 +1,9 @@
 {
   "status": "success",
-  "estimate": 0.005890221293971323,
+  "estimate": 0.007439044423063384,
   "method": "backdoor.propensity_score_matching",
   "refutations": {
-    "random_common_cause": "Refute: Add a random common cause\nEstimated effect:0.005890221293971323\nNew effect:0.005890221293971321\np value:1.0\n",
-    "placebo_treatment_refuter": "Refute: Use a Placebo Treatment\nEstimated effect:0.005890221293971323\nNew effect:-6.195292516368247e-05\np value:0.98\n"
+    "random_common_cause": "Refute: Add a random common cause\nEstimated effect:0.007439044423063384\nNew effect:0.007439044423063384\np value:1.0\n",
+    "placebo_treatment_refuter": "Refute: Use a Placebo Treatment\nEstimated effect:0.007439044423063384\nNew effect:1.1029498040504073e-05\np value:0.94\n"
   }
 }

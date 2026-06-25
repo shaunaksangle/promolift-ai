@@ -45,7 +45,7 @@ The propensity model AUC for predicting treatment assignment from pre-campaign f
 
 ## DoWhy Result
 
-DoWhy ran successfully using a simple backdoor propensity score matching estimator. The estimated effect was 0.59%. Refutation details are saved in `reports/causal/dowhy_results.json`.
+DoWhy ran successfully using a simple backdoor propensity score matching estimator. The estimated effect was 0.74%. Refutation details are saved in `reports/causal/dowhy_results.json`.
 
 ## Limitations
 
