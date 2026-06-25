@@ -30,9 +30,10 @@ This runs:
 
 1. Data loading and preprocessing
 2. EDA generation
-3. Baseline conversion model
-4. Uplift model
-5. Causal validation
+3. Causal EDA generation
+4. Baseline conversion model
+5. Uplift model
+6. Causal validation
 
 The script stops immediately if a step fails.
 
@@ -63,7 +64,22 @@ reports/eda/
 reports/figures/
 ```
 
-## 5. Baseline Model
+## 5. Causal EDA Generation
+
+```powershell
+python -m src.analysis.causal_eda
+```
+
+This creates causal-focused EDA artifacts: treatment balance plots, propensity overlap diagnostics, naive versus stratified-adjusted effect comparisons, subgroup heterogeneity visuals, a DAG sketch, and a causal EDA markdown report.
+
+Key outputs:
+
+```text
+reports/causal_eda/
+reports/figures/
+```
+
+## 6. Baseline Model
 
 ```powershell
 python -m src.models.baseline_model
@@ -78,7 +94,7 @@ reports/modeling/
 reports/figures/
 ```
 
-## 6. Uplift Model
+## 7. Uplift Model
 
 ```powershell
 python -m src.models.uplift_model
@@ -93,7 +109,7 @@ reports/uplift/
 reports/figures/
 ```
 
-## 7. Causal Validation
+## 8. Causal Validation
 
 ```powershell
 python -m src.causal.causal_validation
@@ -108,7 +124,7 @@ reports/causal/
 reports/figures/
 ```
 
-## 8. Streamlit Dashboard
+## 9. Streamlit Dashboard
 
 After the pipeline outputs exist, run:
 
@@ -134,6 +150,7 @@ Run:
 
 ```powershell
 python -m src.analysis.eda_hillstrom
+python -m src.analysis.causal_eda
 ```
 
 ### Missing baseline, uplift, or causal outputs

@@ -34,6 +34,10 @@ This project uses the Hillstrom Email Marketing dataset, a real marketing experi
 
 The `Womens E-Mail` group is excluded in this version so the first treatment/control comparison stays simple and easy to explain.
 
+## Causal EDA
+
+The project includes causal EDA to make the treatment/control reasoning explicit. This step checks pre-campaign treatment balance, propensity score overlap, naive versus stratified-adjusted effect estimates, subgroup heterogeneity, a simple causal DAG, and leakage risk. The leakage note documents that post-campaign columns such as `visit`, `conversion`, and `spend` are excluded from model features.
+
 ## Key Results
 
 | Metric | Result |
@@ -54,10 +58,11 @@ The experiment shows a positive average treatment effect, and the balance checks
 
 1. Data loading and preprocessing
 2. EDA and treatment/control comparison
-3. Baseline conversion model
-4. Uplift modeling with T-Learner and S-Learner
-5. Causal validation with balance checks, propensity scores, and DoWhy
-6. Streamlit dashboard
+3. Causal EDA with balance, overlap, DAG, leakage, and heterogeneity checks
+4. Baseline conversion model
+5. Uplift modeling with T-Learner and S-Learner
+6. Causal validation with balance checks, propensity scores, and DoWhy
+7. Streamlit dashboard
 
 ## Tech Stack
 
@@ -109,6 +114,7 @@ Or run each step manually:
 ```powershell
 python -m src.data.load_hillstrom
 python -m src.analysis.eda_hillstrom
+python -m src.analysis.causal_eda
 python -m src.models.baseline_model
 python -m src.models.uplift_model
 python -m src.causal.causal_validation
@@ -129,6 +135,7 @@ Dashboard pages:
 
 - Executive Overview: main KPIs, campaign lift, and the project story.
 - Dataset & Experiment: Hillstrom experiment setup, treatment/control counts, and EDA visuals.
+- Causal EDA: treatment balance, propensity overlap, stratified effects, heterogeneity, DAG, and leakage notes.
 - Baseline ML Model: standard conversion prediction and why it is not enough.
 - Uplift Modeling: T-Learner and S-Learner comparison, uplift ranking, and policy value.
 - Causal Validation: ATE, propensity scores, balance checks, SMD, and DoWhy validation.

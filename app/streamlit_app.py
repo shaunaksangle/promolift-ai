@@ -20,6 +20,7 @@ PROCESSED_DATA_PATH = DATA_DIR / "processed" / "hillstrom_mens_email.csv"
 MODELING_DIR = REPORTS_DIR / "modeling"
 UPLIFT_DIR = REPORTS_DIR / "uplift"
 CAUSAL_DIR = REPORTS_DIR / "causal"
+CAUSAL_EDA_DIR = REPORTS_DIR / "causal_eda"
 
 DISPLAY_COLUMN_NAMES = {
     "customer_id": "Customer ID",
@@ -45,6 +46,22 @@ DISPLAY_COLUMN_NAMES = {
     "control_mean": "Control Mean",
     "smd": "SMD",
     "abs_smd": "Abs SMD",
+    "estimate_type": "Estimate Type",
+    "adjustment_variable": "Adjustment",
+    "effect_estimate": "Effect Estimate",
+    "effect_percentage_points": "Effect (pp)",
+    "segments_used": "Segments Used",
+    "interpretation": "Interpretation",
+    "mean_propensity": "Mean Propensity",
+    "median_propensity": "Median Propensity",
+    "p05_propensity": "P05 Propensity",
+    "p95_propensity": "P95 Propensity",
+    "min_propensity": "Min Propensity",
+    "max_propensity": "Max Propensity",
+    "share_in_common_support": "Share in Common Support",
+    "common_support_min": "Common Support Min",
+    "common_support_max": "Common Support Max",
+    "propensity_auc": "Propensity AUC",
 }
 
 PERCENT_TABLE_COLUMNS = {
@@ -54,6 +71,11 @@ PERCENT_TABLE_COLUMNS = {
     "observed_conversion_rate_targeted_treated",
     "observed_conversion_rate_targeted_control",
     "observed_incremental_conversion_rate",
+    "effect_estimate",
+    "treatment_conversion_rate",
+    "control_conversion_rate",
+    "segment_uplift",
+    "share_in_common_support",
 }
 
 NUMBER_TABLE_COLUMNS = {
@@ -152,6 +174,8 @@ def generation_hint(path):
     """Return the command most likely needed to generate a missing artifact."""
     path_text = str(path).replace("\\", "/")
 
+    if "reports/causal_eda" in path_text or "causal_eda_" in path.name:
+        return "Run `python -m src.analysis.causal_eda` to generate causal EDA outputs."
     if "reports/modeling" in path_text or "baseline_" in path.name:
         return "Run `python -m src.models.baseline_model` to generate baseline outputs."
     if "reports/uplift" in path_text or "uplift_" in path.name or "cumulative_uplift" in path.name:
@@ -301,6 +325,55 @@ def page_dataset_experiment():
         ],
         columns_per_row=1,
     )
+
+
+def page_causal_eda():
+    """Render the causal EDA page."""
+    st.header("Causal EDA")
+    st.write(
+        "In causal projects, EDA is used to inspect treatment assignment, "
+        "overlap, potential selection bias, and subgroup heterogeneity."
+    )
+    st.info("Post-campaign columns are excluded from model features to avoid leakage.")
+
+    effects_df = load_csv_safe(CAUSAL_EDA_DIR / "naive_vs_stratified_effects.csv")
+    overlap_df = load_csv_safe(CAUSAL_EDA_DIR / "propensity_overlap_summary.csv")
+
+    st.subheader("Treatment Balance and Covariate Overlap")
+    st.write("These charts compare treated and control customers before campaign exposure.")
+    show_chart_grid(
+        [
+            FIGURES_DIR / "causal_eda_numeric_overlap.png",
+            FIGURES_DIR / "causal_eda_categorical_balance.png",
+        ],
+        columns_per_row=1,
+    )
+
+    st.subheader("Propensity Score Overlap")
+    st.write("The propensity diagnostic checks whether treated and control customers have comparable assignment probabilities.")
+    show_image_if_exists(FIGURES_DIR / "causal_eda_propensity_overlap.png")
+    if overlap_df is not None:
+        st.dataframe(prepare_display_table(overlap_df), width="stretch", hide_index=True)
+
+    st.subheader("Naive vs Stratified-Adjusted Effects")
+    st.write("Because Hillstrom is randomized, naive ATE is meaningful; segment-adjusted estimates provide robustness checks.")
+    show_image_if_exists(FIGURES_DIR / "causal_eda_naive_vs_adjusted_effect.png")
+    if effects_df is not None:
+        st.dataframe(prepare_display_table(effects_df), width="stretch", hide_index=True)
+
+    st.subheader("Subgroup Heterogeneity")
+    st.write("Subgroup treatment effects motivate uplift modeling instead of relying only on one average effect.")
+    show_chart_grid(
+        [
+            FIGURES_DIR / "causal_eda_subgroup_uplift.png",
+            FIGURES_DIR / "causal_eda_heterogeneity_heatmap.png",
+        ],
+        columns_per_row=1,
+    )
+
+    st.subheader("Causal DAG")
+    st.write("The DAG documents the causal assumptions behind the treatment/control comparison.")
+    show_image_if_exists(FIGURES_DIR / "causal_eda_dag.png")
 
 
 def page_baseline_ml_model():
@@ -559,6 +632,7 @@ def main():
     pages = {
         "Executive Overview": page_executive_overview,
         "Dataset & Experiment": page_dataset_experiment,
+        "Causal EDA": page_causal_eda,
         "Baseline ML Model": page_baseline_ml_model,
         "Uplift Modeling": page_uplift_modeling,
         "Causal Validation": page_causal_validation,

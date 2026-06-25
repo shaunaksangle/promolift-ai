@@ -14,6 +14,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PIPELINE_STEPS = [
     ("Data loading and preprocessing", "src.data.load_hillstrom"),
     ("EDA and treatment/control analysis", "src.analysis.eda_hillstrom"),
+    ("Causal EDA and overlap diagnostics", "src.analysis.causal_eda"),
     ("Baseline conversion model", "src.models.baseline_model"),
     ("Uplift modeling", "src.models.uplift_model"),
     ("Causal validation", "src.causal.causal_validation"),

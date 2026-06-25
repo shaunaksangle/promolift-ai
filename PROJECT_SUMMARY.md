@@ -16,6 +16,8 @@ Causal validation is included to make the interpretation more responsible. The p
 
 The project pipeline starts by downloading and preprocessing the Hillstrom dataset into a binary treatment dataset. It then performs EDA, including treatment/control conversion lift, visit lift, spend analysis, and segment-level uplift tables.
 
+Causal EDA makes the project stronger than generic EDA by checking whether treated and control customers look comparable before treatment, whether propensity scores overlap, whether naive effects are robust to simple segment adjustment, and whether treatment effects differ across subgroups. It also documents a causal DAG and leakage limitations, which makes the modeling story more credible for real decision-making.
+
 The baseline model is a normal conversion classifier using pre-campaign features only. It demonstrates that ranking likely converters is not the same as estimating incremental campaign impact.
 
 The uplift modeling step compares T-Learner and S-Learner approaches. The T-Learner trains separate treatment and control outcome models, while the S-Learner trains one model with treatment as a feature and scores each customer twice. Model selection prioritizes estimated incremental conversions at the top 30% targeting threshold, which is more stable for rare conversion campaigns than only using top-decile observed uplift.

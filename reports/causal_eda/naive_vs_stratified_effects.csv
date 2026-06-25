@@ -1,0 +1,5 @@
+estimate_type,adjustment_variable,effect_estimate,effect_percentage_points,segments_used,customers,interpretation
+Naive ATE,None,0.006805006519615695,0.6805006519615695,1,42613,Unadjusted randomized experiment estimate
+Stratified-adjusted effect estimate,channel,0.006803390997432815,0.6803390997432814,3,42613,Weighted segment-level treatment-control difference
+Stratified-adjusted effect estimate,history_segment,0.006777056877287966,0.6777056877287966,7,42613,Weighted segment-level treatment-control difference
+Stratified-adjusted effect estimate,newbie,0.0068034933074025,0.68034933074025,2,42613,Weighted segment-level treatment-control difference
