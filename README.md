@@ -57,6 +57,10 @@ The baseline model predicts conversion probability using only pre-campaign custo
 
 The project moves from conversion prediction to treatment-effect estimation with T-Learner and S-Learner models. Uplift scores estimate `P(conversion | treated) - P(conversion | control)`, allowing customers to be ranked by expected incremental campaign effect. Uplift outputs are saved under `reports/uplift/`, and uplift charts are saved under `reports/figures/`.
 
+## Causal Validation
+
+The causal validation step calculates the observed average treatment effect, checks treatment/control covariate balance, and estimates propensity scores to inspect treatment assignment predictability. It also optionally runs DoWhy causal estimation and refutation when available. The purpose is to support responsible interpretation of uplift results before moving into broader business recommendations.
+
 ## Planned Project Stages
 
 1. Project setup and repository structure
