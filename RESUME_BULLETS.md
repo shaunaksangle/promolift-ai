@@ -1,0 +1,9 @@
+# Resume Bullet Options
+
+- Built PromoLift AI, an end-to-end causal uplift modeling project that used a randomized treatment/control email experiment to identify customers likely to convert because of a campaign, helping reduce discount waste versus blanket couponing.
+
+- Developed T-Learner and S-Learner uplift models for campaign targeting, selecting the business-preferred model using top-30% estimated incremental conversions rather than standard conversion probability alone.
+
+- Performed causal validation with covariate balance checks, propensity score AUC analysis, standardized mean differences, and DoWhy-based estimation/refutation to support credible treatment-effect interpretation.
+
+- Created a recruiter-friendly Streamlit dashboard that tells the full business story across EDA, baseline ML, uplift modeling, causal validation, and final targeting recommendations for more efficient marketing spend.

@@ -134,6 +134,14 @@ Dashboard pages:
 - Causal Validation: ATE, propensity scores, balance checks, SMD, and DoWhy validation.
 - Final Recommendation: business recommendation for uplift-based targeting.
 
+## Deployment
+
+The Streamlit dashboard entrypoint is `app/streamlit_app.py`.
+The project includes `runtime.txt` to request Python 3.11 for deployment.
+Dashboard theme and browser settings are configured in `.streamlit/config.toml`.
+
+See `DEPLOYMENT.md` for deployment steps.
+
 ## Why This Project Stands Out
 
 PromoLift AI goes beyond a standard classification project. It combines causal inference, uplift modeling, treatment/control experiment design, rare conversion modeling, business decision-making, and dashboard storytelling. The result is a project that connects model outputs to a concrete marketing decision: who should receive a campaign.

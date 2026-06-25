@@ -1,15 +1,6 @@
 pandas
-numpy
 scikit-learn
 matplotlib
 seaborn
-plotly
 streamlit
-xgboost
-lightgbm
-shap
 dowhy
-econml
-causalml
-jupyter
-python-dotenv
