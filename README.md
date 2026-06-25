@@ -61,6 +61,14 @@ The project moves from conversion prediction to treatment-effect estimation with
 
 The causal validation step calculates the observed average treatment effect, checks treatment/control covariate balance, and estimates propensity scores to inspect treatment assignment predictability. It also optionally runs DoWhy causal estimation and refutation when available. The purpose is to support responsible interpretation of uplift results before moving into broader business recommendations.
 
+## Streamlit Dashboard
+
+The Streamlit dashboard reads generated reports, CSV files, JSON files, and PNG charts to present the full PromoLift AI story. Run it with:
+
+```bash
+streamlit run app/streamlit_app.py
+```
+
 ## Planned Project Stages
 
 1. Project setup and repository structure
