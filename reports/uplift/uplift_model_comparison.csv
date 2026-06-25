@@ -1,0 +1,3 @@
+model,top_decile_observed_uplift,average_predicted_uplift,top_30_policy_incremental_conversion_rate,top_30_estimated_incremental_conversions,selected_model
+T-Learner,0.0015953981870977007,0.04972856409309714,0.007045312444557013,18.01486392073228,True
+S-Learner,0.010995912341203822,0.19568829554928366,9.360718022135336e-05,0.23935355982600054,False

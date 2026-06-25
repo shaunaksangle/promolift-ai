@@ -53,6 +53,10 @@ The EDA compares `Mens E-Mail` treatment customers against `No E-Mail` control c
 
 The baseline model predicts conversion probability using only pre-campaign customer features. Treatment assignment and post-campaign columns are excluded to avoid leakage. The model is evaluated with ROC-AUC, Average Precision, a confusion matrix, and decile lift. This baseline intentionally shows the limitation of normal ML: it can predict who is likely to convert, but it cannot tell whether the email caused the conversion.
 
+## Uplift Modeling
+
+The project moves from conversion prediction to treatment-effect estimation with T-Learner and S-Learner models. Uplift scores estimate `P(conversion | treated) - P(conversion | control)`, allowing customers to be ranked by expected incremental campaign effect. Uplift outputs are saved under `reports/uplift/`, and uplift charts are saved under `reports/figures/`.
+
 ## Planned Project Stages
 
 1. Project setup and repository structure

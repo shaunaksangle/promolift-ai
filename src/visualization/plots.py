@@ -211,6 +211,185 @@ def plot_decile_lift(decile_df: pd.DataFrame, output_path) -> None:
     _save_plot(plt, fig, output_path)
 
 
+def plot_uplift_decile_bar(decile_df: pd.DataFrame, output_path) -> None:
+    """Save observed uplift by predicted-uplift decile."""
+    plt, _ = _load_plotting_tools()
+    from matplotlib.ticker import FuncFormatter
+
+    _set_plot_theme(plt)
+
+    plot_df = decile_df.copy()
+    plot_df["observed_uplift_pp"] = plot_df["observed_uplift"] * 100
+    colors = [
+        POSITIVE_COLOR if value >= 0 else "#B91C1C"
+        for value in plot_df["observed_uplift_pp"]
+    ]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(
+        plot_df["decile"].astype(str),
+        plot_df["observed_uplift_pp"],
+        color=colors,
+        alpha=0.9,
+    )
+    ax.axhline(0, color=BASELINE_COLOR, linewidth=2)
+
+    for bar, value in zip(bars, plot_df["observed_uplift_pp"]):
+        va = "bottom" if value >= 0 else "top"
+        y_offset = 0.05 if value >= 0 else -0.05
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            value + y_offset,
+            f"{value:+.2f} pp",
+            ha="center",
+            va=va,
+            fontsize=9,
+            fontweight="bold",
+            color=TEXT_COLOR,
+        )
+
+    _add_header(
+        fig,
+        ax,
+        "Observed Uplift by Predicted-Uplift Decile",
+        "Decile 1 contains the customers predicted to be most persuadable by the email.",
+    )
+    ax.set_xlabel("Predicted Uplift Decile, 1 = Highest")
+    ax.set_ylabel("Observed Conversion Uplift")
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.1f} pp"))
+    _style_axis(ax)
+    _save_plot(plt, fig, output_path)
+
+
+def plot_cumulative_uplift_curve(decile_df: pd.DataFrame, output_path) -> None:
+    """Save a cumulative observed uplift curve across deciles."""
+    plt, _ = _load_plotting_tools()
+    from matplotlib.ticker import FuncFormatter
+
+    _set_plot_theme(plt)
+
+    plot_df = decile_df.copy()
+    plot_df["cumulative_observed_uplift_pp"] = (
+        plot_df["cumulative_observed_uplift"] * 100
+    )
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(
+        plot_df["decile"],
+        plot_df["cumulative_observed_uplift_pp"],
+        color=MODEL_COLOR,
+        linewidth=3,
+        marker="o",
+        markersize=7,
+    )
+    ax.axhline(0, color=BASELINE_COLOR, linestyle="--", linewidth=2)
+
+    _add_header(
+        fig,
+        ax,
+        "Cumulative Uplift as More Customers Are Targeted",
+        "The curve shows observed treatment-control lift after adding each uplift-ranked decile.",
+    )
+    ax.set_xlabel("Included Deciles, Ordered by Predicted Uplift")
+    ax.set_ylabel("Cumulative Observed Uplift")
+    ax.set_xticks(plot_df["decile"])
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.1f} pp"))
+    _style_axis(ax)
+    _save_plot(plt, fig, output_path)
+
+
+def plot_predicted_uplift_distribution(uplift_scores, output_path) -> None:
+    """Save the distribution of predicted individual uplift scores."""
+    plt, sns = _load_plotting_tools()
+    from matplotlib.ticker import FuncFormatter
+
+    _set_plot_theme(plt)
+
+    uplift_scores_pp = pd.Series(uplift_scores, name="uplift_score") * 100
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.histplot(
+        uplift_scores_pp,
+        bins=40,
+        color=MODEL_COLOR,
+        alpha=0.75,
+        edgecolor="white",
+        ax=ax,
+    )
+    ax.axvline(
+        0,
+        color=WARNING_COLOR,
+        linestyle="--",
+        linewidth=2.5,
+        label="Zero predicted uplift",
+    )
+
+    _add_header(
+        fig,
+        ax,
+        "Predicted Uplift Scores Separate Positive and Negative Impact",
+        "Scores above zero indicate customers predicted to convert more often if emailed.",
+    )
+    ax.set_xlabel("Predicted Uplift Score, Percentage Points")
+    ax.set_ylabel("Customers")
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.1f} pp"))
+    ax.legend(loc="upper right", frameon=False)
+    _style_axis(ax)
+    _save_plot(plt, fig, output_path)
+
+
+def plot_policy_comparison(policy_df: pd.DataFrame, output_path) -> None:
+    """Save a policy comparison chart for alternative targeting rules."""
+    plt, _ = _load_plotting_tools()
+    _set_plot_theme(plt)
+
+    plot_df = policy_df.copy()
+    if "policy" not in plot_df.columns:
+        plot_df["policy"] = plot_df["target_percent"].map(
+            lambda value: f"Top {value:.0%}"
+        )
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    bars = ax.bar(
+        plot_df["policy"],
+        plot_df["estimated_incremental_conversions"],
+        color=MODEL_COLOR,
+        alpha=0.9,
+    )
+    ax.axhline(0, color=BASELINE_COLOR, linewidth=2)
+
+    for bar, incremental_conversions, incremental_rate in zip(
+        bars,
+        plot_df["estimated_incremental_conversions"],
+        plot_df["observed_incremental_conversion_rate"],
+    ):
+        va = "bottom" if incremental_conversions >= 0 else "top"
+        max_value = max(abs(plot_df["estimated_incremental_conversions"]))
+        y_offset = max(max_value * 0.03, 0.5)
+        y_offset = y_offset if incremental_conversions >= 0 else -y_offset
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            incremental_conversions + y_offset,
+            f"{incremental_conversions:,.1f}\n({incremental_rate:+.2%})",
+            ha="center",
+            va=va,
+            fontsize=9,
+            fontweight="bold",
+            color=TEXT_COLOR,
+        )
+
+    _add_header(
+        fig,
+        ax,
+        "Targeting by Uplift Changes Expected Incremental Conversions",
+        "Policy value compares emailing everyone with targeting only high-uplift customers.",
+    )
+    ax.set_xlabel("")
+    ax.set_ylabel("Estimated Incremental Conversions")
+    _style_axis(ax)
+    _save_plot(plt, fig, output_path)
+
+
 def _load_plotting_tools():
     """Import plotting libraries only when a chart is created."""
     try:
