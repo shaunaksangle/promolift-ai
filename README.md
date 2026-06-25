@@ -49,6 +49,10 @@ This project uses the Hillstrom Email Marketing dataset, a real marketing experi
 
 The EDA compares `Mens E-Mail` treatment customers against `No E-Mail` control customers. It calculates conversion lift, visit lift, and spend differences, then saves segment-level analysis under `reports/eda/` and charts under `reports/figures/`. This analysis motivates why uplift modeling is needed instead of only predicting who is likely to buy.
 
+## Baseline Conversion Model
+
+The baseline model predicts conversion probability using only pre-campaign customer features. Treatment assignment and post-campaign columns are excluded to avoid leakage. The model is evaluated with ROC-AUC, Average Precision, a confusion matrix, and decile lift. This baseline intentionally shows the limitation of normal ML: it can predict who is likely to convert, but it cannot tell whether the email caused the conversion.
+
 ## Planned Project Stages
 
 1. Project setup and repository structure
