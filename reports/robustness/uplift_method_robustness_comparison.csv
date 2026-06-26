@@ -1,0 +1,4 @@
+method,top_decile_observed_uplift,top_30_policy_incremental_conversion_rate,top_30_estimated_incremental_conversions,qini_coefficient,average_predicted_uplift,interpretation
+T-Learner,0.0015953981870977,0.007045312444557,18.01486392073228,-1.9360374305596169,0.0497285640930971,weak or noisy ranking signal
+S-Learner,0.0109959123412038,9.360718022135336e-05,0.2393535598260005,-1.8178471687193127,0.1956882955492836,predicted uplift magnitude appears poorly calibrated
+X-Learner,0.006408632935087816,0.008367693872380736,21.396193231677543,-0.7304366219635664,0.0292382423499742,weak or noisy ranking signal

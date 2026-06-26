@@ -33,7 +33,8 @@ This runs:
 3. Causal EDA generation
 4. Baseline conversion model
 5. Uplift model
-6. Causal validation
+6. Robustness checks
+7. Causal validation
 
 The script stops immediately if a step fails.
 
@@ -109,7 +110,22 @@ reports/uplift/
 reports/figures/
 ```
 
-## 8. Causal Validation
+## 8. Robustness Checks
+
+```powershell
+python -m src.analysis.robustness_checks
+```
+
+This runs an exploratory X-Learner, compares uplift methods, checks direct segment-level heterogeneity, and compares alternative treatment definitions.
+
+Key outputs:
+
+```text
+reports/robustness/
+reports/figures/
+```
+
+## 9. Causal Validation
 
 ```powershell
 python -m src.causal.causal_validation
@@ -124,7 +140,7 @@ reports/causal/
 reports/figures/
 ```
 
-## 9. Streamlit Dashboard
+## 10. Streamlit Dashboard
 
 After the pipeline outputs exist, run:
 
@@ -153,13 +169,14 @@ python -m src.analysis.eda_hillstrom
 python -m src.analysis.causal_eda
 ```
 
-### Missing baseline, uplift, or causal outputs
+### Missing baseline, uplift, robustness, or causal outputs
 
 Run the relevant module:
 
 ```powershell
 python -m src.models.baseline_model
 python -m src.models.uplift_model
+python -m src.analysis.robustness_checks
 python -m src.causal.causal_validation
 ```
 

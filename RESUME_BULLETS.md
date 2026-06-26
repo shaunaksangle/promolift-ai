@@ -9,3 +9,5 @@
 - Created a recruiter-friendly Streamlit dashboard that tells the full business story across EDA, baseline ML, uplift modeling, causal validation, and final targeting recommendations for more efficient marketing spend.
 
 - Added advanced uplift evaluation with Qini curves, uplift calibration by decile, sample-size-aware policy values, and ATE confidence intervals to assess targeting performance beyond standard classification metrics.
+
+- Added robustness checks with an exploratory X-Learner, direct segment-level heterogeneity analysis, and alternative treatment definitions to honestly test whether uplift findings were stable or noisy.

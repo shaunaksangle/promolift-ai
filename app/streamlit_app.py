@@ -21,6 +21,7 @@ MODELING_DIR = REPORTS_DIR / "modeling"
 UPLIFT_DIR = REPORTS_DIR / "uplift"
 CAUSAL_DIR = REPORTS_DIR / "causal"
 CAUSAL_EDA_DIR = REPORTS_DIR / "causal_eda"
+ROBUSTNESS_DIR = REPORTS_DIR / "robustness"
 
 DISPLAY_COLUMN_NAMES = {
     "customer_id": "Customer ID",
@@ -71,6 +72,20 @@ DISPLAY_COLUMN_NAMES = {
     "top_30_targeted_customers": "Top 30% Customers",
     "top_30_treated_customers": "Top 30% Treated",
     "top_30_control_customers": "Top 30% Control",
+    "method": "Method",
+    "policy": "Policy",
+    "segment_variable": "Segment Variable",
+    "segment_value": "Segment Value",
+    "absolute_incremental_conversions": "Abs. Incremental Conversions",
+    "caution_flag": "Caution",
+    "treatment_definition": "Treatment Definition",
+    "observed_ate": "Observed ATE",
+    "relative_lift": "Relative Lift",
+    "standard_error": "Standard Error",
+    "p_value": "p-value",
+    "treatment_visit_rate": "Treatment Visit Rate",
+    "control_visit_rate": "Control Visit Rate",
+    "visit_lift": "Visit Lift",
 }
 
 PERCENT_TABLE_COLUMNS = {
@@ -90,11 +105,17 @@ PERCENT_TABLE_COLUMNS = {
     "ci_lower",
     "ci_upper",
     "ate",
+    "observed_ate",
+    "relative_lift",
+    "treatment_visit_rate",
+    "control_visit_rate",
+    "visit_lift",
 }
 
 NUMBER_TABLE_COLUMNS = {
     "estimated_incremental_conversions",
     "top_30_estimated_incremental_conversions",
+    "absolute_incremental_conversions",
 }
 
 
@@ -188,6 +209,14 @@ def generation_hint(path):
     """Return the command most likely needed to generate a missing artifact."""
     path_text = str(path).replace("\\", "/")
 
+    if "reports/robustness" in path_text or path.name in {
+        "x_learner_qini_curve.png",
+        "x_learner_calibration_by_decile.png",
+        "uplift_method_robustness_comparison.png",
+        "segment_heterogeneity_checks.png",
+        "treatment_definition_comparison.png",
+    }:
+        return "Run `python -m src.analysis.robustness_checks` to generate robustness outputs."
     if "reports/causal_eda" in path_text or "causal_eda_" in path.name:
         return "Run `python -m src.analysis.causal_eda` to generate causal EDA outputs."
     if "reports/modeling" in path_text or "baseline_" in path.name:
@@ -533,6 +562,81 @@ def page_uplift_modeling():
     )
 
 
+def page_robustness_checks():
+    """Render robustness checks for uplift findings."""
+    st.header("Robustness Checks")
+    st.write(
+        "Robustness checks test whether the uplift story is stable across an "
+        "alternative method, interpretable segments, and treatment definitions."
+    )
+    st.info(
+        "This step is not meant to search for a flattering result. Weak or noisy "
+        "uplift is still a useful finding because it shows where targeting signal "
+        "may be limited."
+    )
+
+    method_df = load_csv_safe(
+        ROBUSTNESS_DIR / "uplift_method_robustness_comparison.csv"
+    )
+    segment_df = load_csv_safe(ROBUSTNESS_DIR / "segment_heterogeneity_checks.csv")
+    treatment_df = load_csv_safe(
+        ROBUSTNESS_DIR / "treatment_definition_comparison.csv"
+    )
+
+    st.subheader("X-Learner Robustness")
+    st.write(
+        "The X-Learner is an exploratory alternative uplift method. It should "
+        "support or pressure-test the main T/S-Learner story, not replace it."
+    )
+    show_chart_grid(
+        [
+            FIGURES_DIR / "x_learner_qini_curve.png",
+            FIGURES_DIR / "x_learner_calibration_by_decile.png",
+        ],
+        columns_per_row=1,
+    )
+
+    st.subheader("Method Robustness Comparison")
+    show_image_if_exists(FIGURES_DIR / "uplift_method_robustness_comparison.png")
+    if method_df is not None:
+        st.dataframe(prepare_display_table(method_df), width="stretch", hide_index=True)
+
+    st.subheader("Interpretable Segment Heterogeneity")
+    st.write(
+        "Direct segment checks compare observed treatment-control lift inside "
+        "business-readable groups. Small segments can be noisy."
+    )
+    show_image_if_exists(FIGURES_DIR / "segment_heterogeneity_checks.png")
+    if segment_df is not None:
+        with st.expander("View segment heterogeneity table"):
+            st.dataframe(
+                prepare_display_table(segment_df),
+                width="stretch",
+                hide_index=True,
+            )
+
+    st.subheader("Treatment Definition Robustness")
+    st.write(
+        "The main project keeps Mens E-Mail vs No E-Mail as the primary setup. "
+        "Womens E-Mail and Any E-Mail are exploratory robustness checks."
+    )
+    show_image_if_exists(FIGURES_DIR / "treatment_definition_comparison.png")
+    if treatment_df is not None:
+        with st.expander("View treatment definition comparison"):
+            st.dataframe(
+                prepare_display_table(treatment_df),
+                width="stretch",
+                hide_index=True,
+            )
+
+    st.success(
+        "Final interpretation: if fine-grained targeting does not strongly beat "
+        "random targeting, the business lesson is still valuable. The campaign may "
+        "create broad lift while individual-level targeting needs stronger signal "
+        "or richer features."
+    )
+
+
 def page_causal_validation():
     """Render the causal validation page."""
     st.header("Causal Validation")
@@ -730,6 +834,7 @@ def main():
         "Causal EDA": page_causal_eda,
         "Baseline ML Model": page_baseline_ml_model,
         "Uplift Modeling": page_uplift_modeling,
+        "Robustness Checks": page_robustness_checks,
         "Causal Validation": page_causal_validation,
         "Final Recommendation": page_final_recommendation,
     }

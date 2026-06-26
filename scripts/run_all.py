@@ -17,6 +17,7 @@ PIPELINE_STEPS = [
     ("Causal EDA and overlap diagnostics", "src.analysis.causal_eda"),
     ("Baseline conversion model", "src.models.baseline_model"),
     ("Uplift modeling", "src.models.uplift_model"),
+    ("Robustness checks", "src.analysis.robustness_checks"),
     ("Causal validation", "src.causal.causal_validation"),
 ]
 

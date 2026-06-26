@@ -24,6 +24,8 @@ The uplift modeling step compares T-Learner and S-Learner approaches. The T-Lear
 
 Advanced uplift evaluation makes the model assessment more mature. The Qini curve matters because it shows whether uplift-ranked targeting beats random targeting. Calibration matters because predicted uplift magnitudes can be larger than the validated campaign-level ATE, especially with rare conversions and imperfect probability calibration. Even when raw predicted uplift is not perfectly calibrated, the ranking can still be useful if high-ranked groups show stronger observed incremental response and better policy value.
 
+Robustness checks make the conclusion more credible by asking whether the same story appears under an exploratory X-Learner, direct segment-level checks, and alternative treatment definitions. Weak uplift is still useful because it may show that the campaign creates broad lift but individual-level targeting needs richer features or stronger signal. Not tuning for a better Qini curve is the responsible choice because the goal is honest decision support, not forcing a flattering result.
+
 The causal validation step estimates the observed average treatment effect, checks covariate balance with SMD, inspects propensity scores, and optionally uses DoWhy for an additional causal estimation/refutation layer.
 
 ## Business Impact Explanation

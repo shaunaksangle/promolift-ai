@@ -42,6 +42,10 @@ The project includes causal EDA to make the treatment/control reasoning explicit
 
 PromoLift AI includes uplift-specific evaluation beyond ordinary classification metrics. The Qini curve compares uplift-ranked targeting against random targeting, calibration by decile checks whether predicted uplift magnitude matches observed uplift, and the ATE confidence interval quantifies uncertainty around observed campaign lift. Uplift decile and top-percent policy outputs include sample sizes so each lift estimate can be interpreted with the right amount of caution. DoWhy refutation tests add robustness checks with random common cause, placebo treatment, and subset refuters when supported.
 
+## Robustness Checks
+
+The project includes robustness checks to avoid over-claiming uplift results. An exploratory X-Learner is compared against the main T-Learner and S-Learner outputs, direct segment-level heterogeneity is checked across interpretable customer groups, and alternative treatment definitions compare Mens E-Mail, Womens E-Mail, and Any E-Mail against No E-Mail. If uplift signals are weak or noisy, that is treated as an honest business finding rather than something to tune away.
+
 ## Key Results
 
 | Metric | Result |
@@ -65,8 +69,9 @@ The experiment shows a positive average treatment effect, and the balance checks
 3. Causal EDA with balance, overlap, DAG, leakage, and heterogeneity checks
 4. Baseline conversion model
 5. Uplift modeling with T-Learner and S-Learner
-6. Causal validation with balance checks, propensity scores, and DoWhy
-7. Streamlit dashboard
+6. Robustness checks with X-Learner, segment heterogeneity, and treatment definitions
+7. Causal validation with balance checks, propensity scores, and DoWhy
+8. Streamlit dashboard
 
 ## Tech Stack
 
@@ -121,6 +126,7 @@ python -m src.analysis.eda_hillstrom
 python -m src.analysis.causal_eda
 python -m src.models.baseline_model
 python -m src.models.uplift_model
+python -m src.analysis.robustness_checks
 python -m src.causal.causal_validation
 streamlit run app/streamlit_app.py
 ```
@@ -142,6 +148,7 @@ Dashboard pages:
 - Causal EDA: treatment balance, propensity overlap, stratified effects, heterogeneity, DAG, and leakage notes.
 - Baseline ML Model: standard conversion prediction and why it is not enough.
 - Uplift Modeling: T-Learner and S-Learner comparison, uplift ranking, and policy value.
+- Robustness Checks: X-Learner robustness, segment checks, and alternative treatment definitions.
 - Causal Validation: ATE, propensity scores, balance checks, SMD, and DoWhy validation.
 - Final Recommendation: business recommendation for uplift-based targeting.
 
