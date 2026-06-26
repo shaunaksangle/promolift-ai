@@ -3,5 +3,7 @@
   "control_conversion_rate": 0.005726086548390125,
   "naive_ate": 0.006805006519615695,
   "naive_ate_percentage_points": 0.6805006519615695,
+  "observed_ate": 0.006805006519615695,
+  "observed_ate_percentage_points": 0.6805006519615695,
   "relative_lift": 1.188421876286328
 }

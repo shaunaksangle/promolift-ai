@@ -8,14 +8,17 @@ Causal validation checks whether the treatment-control comparison is credible be
 
 If treatment and control customers are balanced on pre-campaign features, then outcome differences are more plausibly caused by the campaign rather than by pre-existing customer differences. Because Hillstrom is a randomized marketing experiment, we expect strong balance.
 
-## Naive Average Treatment Effect
+## Observed Average Treatment Effect
 
 - Treatment conversion rate: 1.25%
 - Control conversion rate: 0.57%
-- Naive ATE: 0.68 percentage points
+- Observed ATE: 0.68 percentage points
 - Relative lift: 118.84%
+- Standard error: 0.0009
+- 95% CI: 0.50% to 0.86%
+- Two-proportion z-test p-value: 0.0000
 
-The naive ATE is the observed treatment-control conversion difference. In a randomized experiment, this estimate is already meaningful as a campaign lift measure.
+The raw formula is treatment conversion rate minus control conversion rate. Because Hillstrom is a randomized experiment, this observed ATE is already meaningful as a campaign lift measure.
 
 ## Covariate Balance Findings
 
@@ -43,9 +46,22 @@ Standardized mean differences below 0.10 are usually considered good balance. Va
 
 The propensity model AUC for predicting treatment assignment from pre-campaign features was 0.510. A low or moderate AUC suggests treatment assignment is not easily predictable from customer features. A very high AUC would warn that the treatment group may have been selected differently from control.
 
+Because balance checks show very low SMD and propensity AUC near 0.5, the observed treatment-control difference is more credible than a generic observational comparison.
+
 ## DoWhy Result
 
-DoWhy ran successfully using a simple backdoor propensity score matching estimator. The estimated effect was 0.74%. Refutation details are saved in `reports/causal/dowhy_results.json`.
+DoWhy ran successfully using a simple backdoor propensity score matching estimator. The estimated effect was 0.64%. Refutation details are saved in `reports/causal/dowhy_results.json`.
+
+Refutation status:
+- Random common cause (`random_common_cause`): success
+- Placebo treatment (`placebo_treatment_refuter`): success
+- Subset refuter (`data_subset_refuter`): success
+
+DoWhy refuters are interpreted as robustness checks:
+
+- Random common cause refuter checks whether adding a random noise confounder changes the result.
+- Placebo treatment refuter checks whether a fake treatment destroys the effect.
+- Subset refuter, if supported by the installed DoWhy version, checks whether the estimate is stable on a subset.
 
 ## Limitations
 
@@ -62,5 +78,7 @@ Uplift scores are used for customer ranking; causal validation supports whether 
 ![Propensity overlap](../figures/propensity_score_overlap.png)
 
 ![ATE summary](../figures/causal_ate_summary.png)
+
+![ATE confidence interval](../figures/ate_confidence_interval.png)
 
 ![Treatment assignment predictability](../figures/treatment_assignment_predictability.png)

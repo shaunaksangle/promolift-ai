@@ -390,6 +390,174 @@ def plot_policy_comparison(policy_df: pd.DataFrame, output_path) -> None:
     _save_plot(plt, fig, output_path)
 
 
+def plot_qini_curve(qini_df: pd.DataFrame, output_path) -> None:
+    """Save a Qini curve comparing uplift ranking against random targeting."""
+    plt, _ = _load_plotting_tools()
+    _set_plot_theme(plt)
+
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+    ax.plot(
+        qini_df["targeted_customers"],
+        qini_df["cumulative_incremental_conversions"],
+        color=MODEL_COLOR,
+        linewidth=3,
+        label="Uplift-ranked targeting",
+    )
+    ax.plot(
+        qini_df["targeted_customers"],
+        qini_df["random_incremental_conversions"],
+        color=BASELINE_COLOR,
+        linestyle="--",
+        linewidth=2.5,
+        label="Random targeting baseline",
+    )
+    ax.axhline(0, color=GRID_COLOR, linewidth=1.5)
+
+    average_gain = qini_df["qini_gain"].mean()
+    if average_gain >= 0:
+        annotation = "Model ranking beats random targeting over the full ranked list."
+        annotation_color = POSITIVE_COLOR
+    else:
+        annotation = "Model ranking does not beat random targeting over the full ranked list."
+        annotation_color = WARNING_COLOR
+
+    ax.text(
+        0.03,
+        0.94,
+        annotation,
+        transform=ax.transAxes,
+        va="top",
+        fontsize=10,
+        color=annotation_color,
+        bbox={
+            "boxstyle": "round,pad=0.4",
+            "facecolor": "white",
+            "edgecolor": GRID_COLOR,
+        },
+    )
+
+    _add_header(
+        fig,
+        ax,
+        "Qini Curve: Does Uplift Targeting Beat Random Targeting?",
+        "The model is useful if its cumulative incremental conversions stay above the random baseline.",
+    )
+    ax.set_xlabel("Customers targeted")
+    ax.set_ylabel("Cumulative incremental conversions")
+    ax.legend(loc="lower right", frameon=False)
+    _style_axis(ax)
+    _save_plot(plt, fig, output_path)
+
+
+def plot_uplift_calibration(calibration_df: pd.DataFrame, output_path) -> None:
+    """Save a calibration chart comparing predicted and observed uplift."""
+    plt, _ = _load_plotting_tools()
+    from matplotlib.ticker import FuncFormatter
+
+    _set_plot_theme(plt)
+
+    plot_df = calibration_df.copy()
+    plot_df["average_predicted_uplift_pp"] = (
+        plot_df["average_predicted_uplift"] * 100
+    )
+    plot_df["observed_uplift_pp"] = plot_df["observed_uplift"] * 100
+
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+    ax.plot(
+        plot_df["decile"],
+        plot_df["average_predicted_uplift_pp"],
+        color=MODEL_COLOR,
+        linewidth=3,
+        marker="o",
+        label="Average predicted uplift",
+    )
+    ax.plot(
+        plot_df["decile"],
+        plot_df["observed_uplift_pp"],
+        color=WARNING_COLOR,
+        linewidth=3,
+        marker="o",
+        label="Observed uplift",
+    )
+    ax.axhline(0, color=BASELINE_COLOR, linestyle="--", linewidth=1.8)
+
+    for row in plot_df.itertuples(index=False):
+        ax.text(
+            row.decile,
+            min(row.average_predicted_uplift_pp, row.observed_uplift_pp) - 0.25,
+            f"n={int(row.customers):,}",
+            ha="center",
+            va="top",
+            fontsize=8,
+            color=MUTED_TEXT_COLOR,
+        )
+
+    _add_header(
+        fig,
+        ax,
+        "Uplift Calibration by Decile",
+        "Predicted uplift is evaluated as a ranking signal, not perfect individual causal truth.",
+    )
+    ax.set_xlabel("Predicted Uplift Decile, 1 = Highest")
+    ax.set_ylabel("Uplift")
+    ax.set_xticks(plot_df["decile"])
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.1f} pp"))
+    ax.legend(loc="upper right", frameon=False)
+    _style_axis(ax)
+    _save_plot(plt, fig, output_path)
+
+
+def plot_ate_confidence_interval(ate_ci: dict, output_path) -> None:
+    """Save observed ATE with a confidence interval."""
+    plt, _ = _load_plotting_tools()
+    from matplotlib.ticker import FuncFormatter
+
+    _set_plot_theme(plt)
+
+    ate = ate_ci["ate"] * 100
+    ci_lower = ate_ci["ci_lower"] * 100
+    ci_upper = ate_ci["ci_upper"] * 100
+    lower_error = ate - ci_lower
+    upper_error = ci_upper - ate
+
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    ax.errorbar(
+        x=[ate],
+        y=["Observed ATE"],
+        xerr=[[lower_error], [upper_error]],
+        fmt="o",
+        color=MODEL_COLOR,
+        ecolor=MODEL_COLOR,
+        elinewidth=3,
+        capsize=8,
+        markersize=10,
+    )
+    ax.axvline(0, color=BASELINE_COLOR, linestyle="--", linewidth=2, label="Zero effect")
+    ax.text(
+        ate,
+        0.12,
+        f"{ate:+.2f} pp\np={ate_ci['p_value']:.4f}",
+        ha="center",
+        va="bottom",
+        fontsize=11,
+        fontweight="bold",
+        color=TEXT_COLOR,
+    )
+
+    _add_header(
+        fig,
+        ax,
+        "Observed Campaign Lift with Confidence Interval",
+        f"{ate_ci['confidence_level']:.0%} confidence interval for treatment minus control conversion rate.",
+    )
+    ax.set_xlabel("Conversion lift")
+    ax.set_ylabel("")
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.1f} pp"))
+    ax.legend(loc="lower right", frameon=False)
+    _style_axis(ax, grid_axis="x")
+    _save_plot(plt, fig, output_path)
+
+
 def _load_plotting_tools():
     """Import plotting libraries only when a chart is created."""
     try:
@@ -436,11 +604,11 @@ def _add_header(fig, ax, title: str, subtitle: str) -> None:
     ax.set_title(subtitle, loc="left", fontsize=10, color=MUTED_TEXT_COLOR, pad=16)
 
 
-def _style_axis(ax) -> None:
+def _style_axis(ax, grid_axis: str = "y") -> None:
     """Apply light grid and remove unnecessary borders."""
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
-    ax.grid(True, axis="y", color=GRID_COLOR, linewidth=0.8)
+    ax.grid(True, axis=grid_axis, color=GRID_COLOR, linewidth=0.8)
     ax.set_axisbelow(True)
 
 

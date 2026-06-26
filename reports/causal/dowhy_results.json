@@ -1,9 +1,22 @@
 {
   "status": "success",
-  "estimate": 0.007439044423063384,
+  "estimate": 0.0064064956703353436,
   "method": "backdoor.propensity_score_matching",
   "refutations": {
-    "random_common_cause": "Refute: Add a random common cause\nEstimated effect:0.007439044423063384\nNew effect:0.007439044423063384\np value:1.0\n",
-    "placebo_treatment_refuter": "Refute: Use a Placebo Treatment\nEstimated effect:0.007439044423063384\nNew effect:1.1029498040504073e-05\np value:0.94\n"
+    "random_common_cause": {
+      "status": "success",
+      "method_name": "random_common_cause",
+      "result": "Refute: Add a random common cause\nEstimated effect:0.0064064956703353436\nNew effect:0.006406495670335343\np value:1.0\n"
+    },
+    "placebo_treatment_refuter": {
+      "status": "success",
+      "method_name": "placebo_treatment_refuter",
+      "result": "Refute: Use a Placebo Treatment\nEstimated effect:0.0064064956703353436\nNew effect:0.0001729519160819468\np value:0.94\n"
+    },
+    "subset_refuter": {
+      "status": "success",
+      "method_name": "data_subset_refuter",
+      "result": "Refute: Use a subset of data\nEstimated effect:0.0064064956703353436\nNew effect:0.006810501613376357\np value:0.5800000000000001\n"
+    }
   }
 }

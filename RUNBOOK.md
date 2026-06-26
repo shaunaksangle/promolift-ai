@@ -100,7 +100,7 @@ reports/figures/
 python -m src.models.uplift_model
 ```
 
-This compares T-Learner and S-Learner uplift models and saves model comparison, policy value tables, and uplift charts.
+This compares T-Learner and S-Learner uplift models and saves model comparison, policy value tables, Qini curve outputs, uplift calibration outputs, ATE confidence interval outputs, and uplift charts.
 
 Key outputs:
 
@@ -115,7 +115,7 @@ reports/figures/
 python -m src.causal.causal_validation
 ```
 
-This estimates the observed ATE, checks covariate balance, calculates propensity diagnostics, and runs the optional DoWhy validation layer when available.
+This estimates the observed ATE, checks covariate balance, calculates propensity diagnostics, writes ATE confidence interval details, and runs the optional DoWhy validation/refutation layer when available.
 
 Key outputs:
 

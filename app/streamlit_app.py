@@ -33,6 +33,10 @@ DISPLAY_COLUMN_NAMES = {
     "selected_model": "Selected",
     "target_percent": "Target %",
     "targeted_customers": "Targeted Customers",
+    "treated_customers": "Treated Customers",
+    "control_customers": "Control Customers",
+    "treated_conversions": "Treated Conversions",
+    "control_conversions": "Control Conversions",
     "observed_conversion_rate_targeted_treated": "Treated CVR",
     "observed_conversion_rate_targeted_control": "Control CVR",
     "observed_incremental_conversion_rate": "Incremental CVR",
@@ -62,6 +66,11 @@ DISPLAY_COLUMN_NAMES = {
     "common_support_min": "Common Support Min",
     "common_support_max": "Common Support Max",
     "propensity_auc": "Propensity AUC",
+    "calibration_gap": "Calibration Gap",
+    "qini_coefficient": "Qini Coefficient",
+    "top_30_targeted_customers": "Top 30% Customers",
+    "top_30_treated_customers": "Top 30% Treated",
+    "top_30_control_customers": "Top 30% Control",
 }
 
 PERCENT_TABLE_COLUMNS = {
@@ -71,11 +80,16 @@ PERCENT_TABLE_COLUMNS = {
     "observed_conversion_rate_targeted_treated",
     "observed_conversion_rate_targeted_control",
     "observed_incremental_conversion_rate",
+    "observed_uplift",
     "effect_estimate",
     "treatment_conversion_rate",
     "control_conversion_rate",
     "segment_uplift",
     "share_in_common_support",
+    "calibration_gap",
+    "ci_lower",
+    "ci_upper",
+    "ate",
 }
 
 NUMBER_TABLE_COLUMNS = {
@@ -234,6 +248,11 @@ def page_executive_overview():
     st.info(
         "Normal ML asks: Who is likely to buy? PromoLift AI asks: Who is likely "
         "to buy because of the campaign?"
+    )
+    st.write(
+        "Validated campaign lift is much smaller than some raw model-predicted "
+        "uplift values, so the uplift model is used for ranking and targeting "
+        "rather than exact individual causal probabilities."
     )
 
     ate_results = load_json_safe(CAUSAL_DIR / "naive_ate.json") or {}
@@ -446,6 +465,7 @@ def page_uplift_modeling():
 
     comparison_df = load_csv_safe(UPLIFT_DIR / "uplift_model_comparison.csv")
     policy_df = load_csv_safe(UPLIFT_DIR / "uplift_policy_values.csv")
+    calibration_df = load_csv_safe(UPLIFT_DIR / "uplift_calibration_table.csv")
 
     selected_row = get_selected_uplift_row(comparison_df)
     selected_model = selected_row.get("model", "T-Learner") if selected_row else "T-Learner"
@@ -491,6 +511,21 @@ def page_uplift_modeling():
     )
     show_chart_grid(
         [
+            FIGURES_DIR / "qini_curve.png",
+            FIGURES_DIR / "uplift_calibration_by_decile.png",
+        ],
+        columns_per_row=1,
+    )
+    st.write(
+        "The model is evaluated mainly as a ranking system. Calibration shows "
+        "whether predicted uplift magnitude matches observed uplift."
+    )
+    if calibration_df is not None:
+        st.subheader("Uplift Calibration Table")
+        st.dataframe(prepare_display_table(calibration_df), width="stretch", hide_index=True)
+
+    show_chart_grid(
+        [
             FIGURES_DIR / "predicted_uplift_distribution.png",
             FIGURES_DIR / "uplift_policy_comparison.png",
         ],
@@ -511,6 +546,9 @@ def page_causal_validation():
     )
 
     ate_results = load_json_safe(CAUSAL_DIR / "naive_ate.json") or {}
+    ate_ci = load_json_safe(CAUSAL_DIR / "ate_confidence_interval.json")
+    if not ate_ci:
+        ate_ci = load_json_safe(UPLIFT_DIR / "ate_confidence_interval.json") or {}
     balance_df = load_csv_safe(CAUSAL_DIR / "covariate_balance.csv")
     dowhy_results = load_json_safe(CAUSAL_DIR / "dowhy_results.json") or {}
 
@@ -530,12 +568,24 @@ def page_causal_validation():
                 format_percent(ate_results.get("control_conversion_rate")),
                 "No E-Mail group",
             ),
-            ("ATE", format_pp(ate_results.get("naive_ate")), "Observed treatment-control lift"),
+            (
+                "Observed ATE",
+                format_pp(ate_results.get("observed_ate", ate_results.get("naive_ate"))),
+                "Validated after balance checks",
+            ),
             ("Largest SMD", f"{largest_smd:.3f}" if largest_smd is not None else "N/A", "Covariate balance diagnostic"),
             ("Propensity AUC", f"{get_propensity_auc():.3f}", "Treatment assignment predictability"),
             ("DoWhy", str(dowhy_results.get("status", "N/A")), "Optional causal validation layer"),
         ]
     )
+
+    if ate_ci:
+        st.write(
+            "ATE confidence interval: "
+            f"{format_percent(ate_ci.get('ci_lower'))} to "
+            f"{format_percent(ate_ci.get('ci_upper'))}; "
+            f"p-value = {float(ate_ci.get('p_value', 0)):.4f}"
+        )
 
     if balance_df is not None:
         st.subheader("Covariate Balance")
@@ -553,10 +603,13 @@ def page_causal_validation():
     )
     show_chart_grid(
         [
+            FIGURES_DIR / "ate_confidence_interval.png",
             FIGURES_DIR / "treatment_assignment_predictability.png",
             FIGURES_DIR / "causal_ate_summary.png",
-        ]
+        ],
+        columns_per_row=1,
     )
+    _show_dowhy_refutations(dowhy_results)
 
 
 def page_final_recommendation():
@@ -620,6 +673,48 @@ def get_propensity_auc():
         return float(dowhy_results["propensity_auc"])
 
     return default_auc
+
+
+def _show_dowhy_refutations(dowhy_results):
+    """Display DoWhy refutation details when available."""
+    refutations = dowhy_results.get("refutations") if isinstance(dowhy_results, dict) else None
+    if not refutations:
+        return
+
+    st.subheader("DoWhy Refutation Checks")
+    refuter_labels = {
+        "random_common_cause": "Random common cause",
+        "placebo_treatment_refuter": "Placebo treatment",
+        "subset_refuter": "Subset refuter",
+    }
+    rows = []
+
+    for refuter_name, label in refuter_labels.items():
+        result = refutations.get(refuter_name)
+        if isinstance(result, dict):
+            rows.append(
+                {
+                    "Refuter": label,
+                    "Status": result.get("status", "unknown"),
+                    "Method": result.get("method_name", refuter_name),
+                }
+            )
+        elif result is not None:
+            rows.append(
+                {
+                    "Refuter": label,
+                    "Status": "completed",
+                    "Method": refuter_name,
+                }
+            )
+
+    if rows:
+        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+        st.write(
+            "Random common cause adds noise as a fake confounder; placebo "
+            "treatment checks whether a fake treatment removes the effect; subset "
+            "refutation checks stability when supported by the installed DoWhy version."
+        )
 
 
 def main():

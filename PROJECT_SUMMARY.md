@@ -22,6 +22,8 @@ The baseline model is a normal conversion classifier using pre-campaign features
 
 The uplift modeling step compares T-Learner and S-Learner approaches. The T-Learner trains separate treatment and control outcome models, while the S-Learner trains one model with treatment as a feature and scores each customer twice. Model selection prioritizes estimated incremental conversions at the top 30% targeting threshold, which is more stable for rare conversion campaigns than only using top-decile observed uplift.
 
+Advanced uplift evaluation makes the model assessment more mature. The Qini curve matters because it shows whether uplift-ranked targeting beats random targeting. Calibration matters because predicted uplift magnitudes can be larger than the validated campaign-level ATE, especially with rare conversions and imperfect probability calibration. Even when raw predicted uplift is not perfectly calibrated, the ranking can still be useful if high-ranked groups show stronger observed incremental response and better policy value.
+
 The causal validation step estimates the observed average treatment effect, checks covariate balance with SMD, inspects propensity scores, and optionally uses DoWhy for an additional causal estimation/refutation layer.
 
 ## Business Impact Explanation

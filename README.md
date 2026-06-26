@@ -38,6 +38,10 @@ The `Womens E-Mail` group is excluded in this version so the first treatment/con
 
 The project includes causal EDA to make the treatment/control reasoning explicit. This step checks pre-campaign treatment balance, propensity score overlap, naive versus stratified-adjusted effect estimates, subgroup heterogeneity, a simple causal DAG, and leakage risk. The leakage note documents that post-campaign columns such as `visit`, `conversion`, and `spend` are excluded from model features.
 
+## Advanced Uplift Evaluation
+
+PromoLift AI includes uplift-specific evaluation beyond ordinary classification metrics. The Qini curve compares uplift-ranked targeting against random targeting, calibration by decile checks whether predicted uplift magnitude matches observed uplift, and the ATE confidence interval quantifies uncertainty around observed campaign lift. Uplift decile and top-percent policy outputs include sample sizes so each lift estimate can be interpreted with the right amount of caution. DoWhy refutation tests add robustness checks with random common cause, placebo treatment, and subset refuters when supported.
+
 ## Key Results
 
 | Metric | Result |

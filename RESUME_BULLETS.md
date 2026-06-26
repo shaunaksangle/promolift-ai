@@ -7,3 +7,5 @@
 - Performed causal validation with covariate balance checks, propensity score AUC analysis, standardized mean differences, and DoWhy-based estimation/refutation to support credible treatment-effect interpretation.
 
 - Created a recruiter-friendly Streamlit dashboard that tells the full business story across EDA, baseline ML, uplift modeling, causal validation, and final targeting recommendations for more efficient marketing spend.
+
+- Added advanced uplift evaluation with Qini curves, uplift calibration by decile, sample-size-aware policy values, and ATE confidence intervals to assess targeting performance beyond standard classification metrics.

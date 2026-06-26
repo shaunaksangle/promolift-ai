@@ -5,6 +5,8 @@ campaign. It implements simple T-Learner and S-Learner approaches without
 adding formal causal validation yet.
 """
 
+import json
+
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -15,16 +17,23 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from src.config import FIGURES_DIR, PROCESSED_DATA_DIR, REPORTS_DIR
 from src.evaluation.uplift_metrics import (
+    calculate_ate_confidence_interval,
     calculate_average_treatment_effect,
     calculate_policy_value,
+    calculate_qini_coefficient,
+    calculate_qini_curve,
     calculate_top_decile_uplift,
+    make_uplift_calibration_table,
     make_uplift_decile_table,
 )
 from src.features.build_features import build_preprocessor, get_feature_columns
 from src.visualization.plots import (
+    plot_ate_confidence_interval,
     plot_cumulative_uplift_curve,
     plot_policy_comparison,
     plot_predicted_uplift_distribution,
+    plot_qini_curve,
+    plot_uplift_calibration,
     plot_uplift_decile_bar,
 )
 
@@ -219,12 +228,24 @@ def run_uplift_modeling() -> dict[str, str | float]:
         treatment_test,
         s_predictions["uplift_score"],
     )
+    t_qini_curve = calculate_qini_curve(
+        y_test,
+        treatment_test,
+        t_predictions["uplift_score"],
+    )
+    s_qini_curve = calculate_qini_curve(
+        y_test,
+        treatment_test,
+        s_predictions["uplift_score"],
+    )
 
     model_comparison = _compare_uplift_models(
         t_predictions=t_predictions,
         s_predictions=s_predictions,
         t_decile_table=t_decile_table,
         s_decile_table=s_decile_table,
+        t_qini_curve=t_qini_curve,
+        s_qini_curve=s_qini_curve,
         y_test=y_test,
         treatment_test=treatment_test,
     )
@@ -233,9 +254,11 @@ def run_uplift_modeling() -> dict[str, str | float]:
     if best_model_name == "T-Learner":
         best_decile_table = t_decile_table
         best_predictions = t_predictions
+        best_qini_curve = t_qini_curve
     else:
         best_decile_table = s_decile_table
         best_predictions = s_predictions
+        best_qini_curve = s_qini_curve
 
     policy_values = _build_policy_value_table(
         y_test,
@@ -243,6 +266,12 @@ def run_uplift_modeling() -> dict[str, str | float]:
         best_predictions["uplift_score"],
         best_model_name,
     )
+    uplift_calibration = make_uplift_calibration_table(
+        y_test,
+        treatment_test,
+        best_predictions["uplift_score"],
+    )
+    ate_confidence_interval = calculate_ate_confidence_interval(df)
 
     t_decile_table.to_csv(
         UPLIFT_REPORTS_DIR / "t_learner_decile_table.csv",
@@ -264,6 +293,18 @@ def run_uplift_modeling() -> dict[str, str | float]:
         UPLIFT_REPORTS_DIR / "uplift_policy_values.csv",
         index=False,
     )
+    best_qini_curve.to_csv(
+        UPLIFT_REPORTS_DIR / "qini_curve.csv",
+        index=False,
+    )
+    uplift_calibration.to_csv(
+        UPLIFT_REPORTS_DIR / "uplift_calibration_table.csv",
+        index=False,
+    )
+    (UPLIFT_REPORTS_DIR / "ate_confidence_interval.json").write_text(
+        json.dumps(ate_confidence_interval, indent=2),
+        encoding="utf-8",
+    )
 
     plot_uplift_decile_bar(
         best_decile_table,
@@ -281,6 +322,18 @@ def run_uplift_modeling() -> dict[str, str | float]:
         policy_values,
         FIGURES_DIR / "uplift_policy_comparison.png",
     )
+    plot_qini_curve(
+        best_qini_curve,
+        FIGURES_DIR / "qini_curve.png",
+    )
+    plot_uplift_calibration(
+        uplift_calibration,
+        FIGURES_DIR / "uplift_calibration_by_decile.png",
+    )
+    plot_ate_confidence_interval(
+        ate_confidence_interval,
+        FIGURES_DIR / "ate_confidence_interval.png",
+    )
 
     _write_uplift_summary(
         ate=ate,
@@ -288,6 +341,9 @@ def run_uplift_modeling() -> dict[str, str | float]:
         model_comparison=model_comparison,
         best_decile_table=best_decile_table,
         policy_values=policy_values,
+        qini_curve=best_qini_curve,
+        uplift_calibration=uplift_calibration,
+        ate_confidence_interval=ate_confidence_interval,
     )
 
     print("\nUplift model comparison:")
@@ -313,15 +369,17 @@ def _compare_uplift_models(
     s_predictions: pd.DataFrame,
     t_decile_table: pd.DataFrame,
     s_decile_table: pd.DataFrame,
+    t_qini_curve: pd.DataFrame,
+    s_qini_curve: pd.DataFrame,
     y_test: pd.Series,
     treatment_test: pd.Series,
 ) -> pd.DataFrame:
     """Compare T-Learner and S-Learner using simple uplift diagnostics."""
     rows = []
 
-    for model_name, predictions, decile_table in [
-        ("T-Learner", t_predictions, t_decile_table),
-        ("S-Learner", s_predictions, s_decile_table),
+    for model_name, predictions, decile_table, qini_curve in [
+        ("T-Learner", t_predictions, t_decile_table, t_qini_curve),
+        ("S-Learner", s_predictions, s_decile_table, s_qini_curve),
     ]:
         top_30_policy = calculate_policy_value(
             y_test,
@@ -335,15 +393,26 @@ def _compare_uplift_models(
                 "top_decile_observed_uplift": calculate_top_decile_uplift(
                     decile_table
                 ),
+                "customers": int(len(y_test)),
                 "average_predicted_uplift": float(
                     predictions["uplift_score"].mean()
                 ),
+                "top_30_targeted_customers": top_30_policy[
+                    "targeted_customers"
+                ],
+                "top_30_treated_customers": top_30_policy[
+                    "treated_customers"
+                ],
+                "top_30_control_customers": top_30_policy[
+                    "control_customers"
+                ],
                 "top_30_policy_incremental_conversion_rate": top_30_policy[
                     "observed_incremental_conversion_rate"
                 ],
                 "top_30_estimated_incremental_conversions": top_30_policy[
                     "estimated_incremental_conversions"
                 ],
+                "qini_coefficient": calculate_qini_coefficient(qini_curve),
             }
         )
 
@@ -361,9 +430,14 @@ def _compare_uplift_models(
         [
             "model",
             "top_decile_observed_uplift",
+            "customers",
             "average_predicted_uplift",
+            "top_30_targeted_customers",
+            "top_30_treated_customers",
+            "top_30_control_customers",
             "top_30_policy_incremental_conversion_rate",
             "top_30_estimated_incremental_conversions",
+            "qini_coefficient",
             "selected_model",
         ]
     ]
@@ -401,6 +475,10 @@ def _build_policy_value_table(
             "policy",
             "target_percent",
             "targeted_customers",
+            "treated_customers",
+            "control_customers",
+            "treated_conversions",
+            "control_conversions",
             "observed_conversion_rate_targeted_treated",
             "observed_conversion_rate_targeted_control",
             "observed_incremental_conversion_rate",
@@ -449,11 +527,16 @@ def _write_uplift_summary(
     model_comparison: pd.DataFrame,
     best_decile_table: pd.DataFrame,
     policy_values: pd.DataFrame,
+    qini_curve: pd.DataFrame,
+    uplift_calibration: pd.DataFrame,
+    ate_confidence_interval: dict[str, float | int],
 ) -> None:
     """Write a portfolio-ready markdown summary of uplift modeling results."""
     selected_model_row = model_comparison[model_comparison["selected_model"]].iloc[0]
     top_decile_uplift = calculate_top_decile_uplift(best_decile_table)
     top_30_policy = policy_values[policy_values["target_percent"] == 0.3].iloc[0]
+    qini_coefficient = calculate_qini_coefficient(qini_curve)
+    mean_abs_calibration_gap = uplift_calibration["calibration_gap"].abs().mean()
 
     summary_text = f"""# Uplift Modeling Summary
 
@@ -485,20 +568,35 @@ Selection metric:
 
 - Primary: top 30% estimated incremental conversions = {selected_model_row["top_30_estimated_incremental_conversions"]:,.1f}
 - Tie-breaker: top-decile observed uplift = {selected_model_row["top_decile_observed_uplift"]:.2%}
+- Qini coefficient: {qini_coefficient:,.3f}
 
 ## Top Uplift Decile
 
-The top decile contains the customers predicted to be most persuadable by the email. For the selected model, the observed uplift in decile 1 was {top_decile_uplift:.2%}. This is directionally useful, but it should not be the only selection metric because rare conversions make small slices of the test set volatile. The full dataset observed average treatment effect was {ate:.2%}.
+The top decile contains the customers predicted to be most persuadable by the email. For the selected model, the observed uplift in decile 1 was {top_decile_uplift:.2%}. This is directionally useful, but it should not be the only selection metric because rare conversions make small slices of the test set volatile. The full dataset observed ATE was {ate:.2%}.
 
 ## Targeting Top 30% Uplift Users
 
-Targeting the top 30% uplift-ranked users reaches {int(top_30_policy["targeted_customers"]):,} customers in the test set. The observed incremental conversion rate inside that targeted group is {top_30_policy["observed_incremental_conversion_rate"]:.2%}, which corresponds to an estimated {top_30_policy["estimated_incremental_conversions"]:.1f} incremental conversions.
+Targeting the top 30% uplift-ranked users reaches {int(top_30_policy["targeted_customers"]):,} customers in the test set, including {int(top_30_policy["treated_customers"]):,} treated customers and {int(top_30_policy["control_customers"]):,} control customers. The observed incremental conversion rate inside that targeted group is {top_30_policy["observed_incremental_conversion_rate"]:.2%}, which corresponds to an estimated {top_30_policy["estimated_incremental_conversions"]:.1f} incremental conversions.
 
 This top-30% policy value is more business-stable than a single top decile because it evaluates a larger campaignable audience. It better reflects the question a marketing team would ask: how many incremental conversions can we expect if we target a realistic share of customers?
 
+## Qini Curve and Random Targeting Baseline
+
+The Qini curve evaluates whether ranking customers by predicted uplift beats random targeting. It compares cumulative incremental conversions from the model-ranked list against the expected incremental conversions from randomly targeting the same share of customers. The selected model's approximate Qini coefficient is {qini_coefficient:,.3f}.
+
+## Uplift Calibration
+
+The calibration table compares average predicted uplift against observed uplift by decile. The mean absolute calibration gap across deciles is {mean_abs_calibration_gap:.2%}. This diagnostic checks whether predicted uplift magnitude is aligned with observed treatment-control differences, not just whether the model ranks customers well.
+
 ## Interpreting Predicted Uplift Scores
 
-Predicted uplift scores are mainly used for ranking customers, not as perfectly calibrated causal probabilities. Class imbalance can inflate probability estimates, especially for rare conversion outcomes, so interpretation should focus on rank ordering, decile performance, and policy value rather than taking every individual uplift score literally.
+Predicted uplift scores are mainly used for ranking customers, not as perfectly calibrated causal probabilities. Class imbalance and probability calibration can make raw predicted uplift values larger than the validated campaign-level ATE. Interpretation should focus on rank ordering, decile performance, Qini gain, and policy value rather than taking every individual uplift score literally.
+
+Observed/validated ATE is the campaign-level effect. The uplift model predicts heterogeneous response so the business can rank customers for targeting.
+
+## Observed ATE Confidence Interval
+
+The observed ATE is {ate_confidence_interval["ate"]:.2%}, with a {ate_confidence_interval["confidence_level"]:.0%} confidence interval from {ate_confidence_interval["ci_lower"]:.2%} to {ate_confidence_interval["ci_upper"]:.2%}. The two-proportion z-test p-value is {ate_confidence_interval["p_value"]:.4f}.
 
 ## Charts
 
@@ -510,13 +608,19 @@ Predicted uplift scores are mainly used for ranking customers, not as perfectly 
 
 ![Policy comparison](../figures/uplift_policy_comparison.png)
 
+![Qini curve](../figures/qini_curve.png)
+
+![Uplift calibration by decile](../figures/uplift_calibration_by_decile.png)
+
+![ATE confidence interval](../figures/ate_confidence_interval.png)
+
 ## Important Limitation
 
 Individual counterfactual outcomes are not directly observed. We never see the same customer both receiving and not receiving the email at the same time. These uplift estimates rely on the randomized treatment-control structure and model assumptions.
 
 ## Why Causal Validation Is Next
 
-The next step is causal validation and more robust treatment-effect estimation with tools such as DoWhy or EconML. That step will make the assumptions explicit, test robustness, and strengthen the argument that the estimated uplift reflects campaign impact rather than model calibration artifacts.
+The next step is causal validation and more robust treatment-effect interpretation with tools such as DoWhy. That step makes assumptions explicit, tests robustness, and strengthens the argument that the estimated uplift reflects campaign impact rather than model calibration artifacts.
 """
 
     output_path = UPLIFT_REPORTS_DIR / "uplift_model_summary.md"
@@ -527,8 +631,8 @@ The next step is causal validation and more robust treatment-effect estimation w
 def _format_comparison_table(model_comparison: pd.DataFrame) -> str:
     """Format the uplift model comparison as a Markdown table."""
     lines = [
-        "| Model | Top Decile Observed Uplift | Avg Predicted Uplift | Top 30% Incremental Rate | Top 30% Incremental Conversions | Selected |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| Model | Top Decile Observed Uplift | Avg Predicted Uplift | Top 30% Customers | Top 30% Incremental Rate | Top 30% Incremental Conversions | Qini Coefficient | Selected |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
 
     for row in model_comparison.itertuples(index=False):
@@ -538,8 +642,10 @@ def _format_comparison_table(model_comparison: pd.DataFrame) -> str:
             f"{row.model} | "
             f"{row.top_decile_observed_uplift:.2%} | "
             f"{row.average_predicted_uplift:.2%} | "
+            f"{row.top_30_targeted_customers:,} | "
             f"{row.top_30_policy_incremental_conversion_rate:.2%} | "
             f"{row.top_30_estimated_incremental_conversions:,.1f} | "
+            f"{row.qini_coefficient:,.3f} | "
             f"{selected_label} |"
         )
 

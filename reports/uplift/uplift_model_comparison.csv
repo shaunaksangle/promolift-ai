@@ -1,3 +1,3 @@
-model,top_decile_observed_uplift,average_predicted_uplift,top_30_policy_incremental_conversion_rate,top_30_estimated_incremental_conversions,selected_model
-T-Learner,0.0015953981870977007,0.04972856409309714,0.007045312444557013,18.01486392073228,True
-S-Learner,0.010995912341203822,0.19568829554928366,9.360718022135336e-05,0.23935355982600054,False
+model,top_decile_observed_uplift,customers,average_predicted_uplift,top_30_targeted_customers,top_30_treated_customers,top_30_control_customers,top_30_policy_incremental_conversion_rate,top_30_estimated_incremental_conversions,qini_coefficient,selected_model
+T-Learner,0.0015953981870977007,8523,0.04972856409309714,2557,1278,1279,0.007045312444557013,18.01486392073228,-1.9360374305596166,True
+S-Learner,0.010995912341203822,8523,0.19568829554928366,2557,1270,1287,9.360718022135336e-05,0.23935355982600054,-1.8178471687193132,False

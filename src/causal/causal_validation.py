@@ -17,7 +17,9 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import Pipeline
 
 from src.config import FIGURES_DIR, PROCESSED_DATA_DIR, REPORTS_DIR
+from src.evaluation.uplift_metrics import calculate_ate_confidence_interval
 from src.features.build_features import build_preprocessor, get_feature_columns
+from src.visualization.plots import plot_ate_confidence_interval
 
 
 PROCESSED_DATA_PATH = PROCESSED_DATA_DIR / "hillstrom_mens_email.csv"
@@ -71,6 +73,8 @@ def calculate_naive_ate(df: pd.DataFrame) -> dict[str, float]:
         "control_conversion_rate": float(control_conversion_rate),
         "naive_ate": float(naive_ate),
         "naive_ate_percentage_points": float(naive_ate * 100),
+        "observed_ate": float(naive_ate),
+        "observed_ate_percentage_points": float(naive_ate * 100),
         "relative_lift": float(relative_lift),
     }
 
@@ -213,17 +217,30 @@ def run_dowhy_ate_if_available(df: pd.DataFrame) -> dict[str, object]:
             )
 
             refutation_results = {}
+            refuters = {
+                "random_common_cause": "random_common_cause",
+                "placebo_treatment_refuter": "placebo_treatment_refuter",
+                "subset_refuter": "data_subset_refuter",
+            }
 
-            for refuter_name in ["random_common_cause", "placebo_treatment_refuter"]:
+            for refuter_label, method_name in refuters.items():
                 try:
                     refutation = causal_model.refute_estimate(
                         estimand,
                         estimate,
-                        method_name=refuter_name,
+                        method_name=method_name,
                     )
-                    refutation_results[refuter_name] = str(refutation)
+                    refutation_results[refuter_label] = {
+                        "status": "success",
+                        "method_name": method_name,
+                        "result": str(refutation),
+                    }
                 except Exception as refuter_error:
-                    refutation_results[refuter_name] = f"failed: {refuter_error}"
+                    refutation_results[refuter_label] = {
+                        "status": "skipped",
+                        "method_name": method_name,
+                        "error": str(refuter_error),
+                    }
 
         return {
             "status": "success",
@@ -287,6 +304,7 @@ def create_causal_validation_plots(
 
 def write_causal_validation_report(
     ate_results: dict[str, float],
+    ate_confidence_interval: dict[str, float | int],
     balance_df: pd.DataFrame,
     propensity_auc: float,
     dowhy_results: dict[str, object],
@@ -304,7 +322,8 @@ def write_causal_validation_report(
         dowhy_text = (
             "DoWhy ran successfully using a simple backdoor propensity score "
             f"matching estimator. The estimated effect was {dowhy_results['estimate']:.2%}. "
-            "Refutation details are saved in `reports/causal/dowhy_results.json`."
+            "Refutation details are saved in `reports/causal/dowhy_results.json`.\n\n"
+            f"{_format_dowhy_refutations(dowhy_results)}"
         )
     else:
         dowhy_text = (
@@ -324,14 +343,17 @@ Causal validation checks whether the treatment-control comparison is credible be
 
 If treatment and control customers are balanced on pre-campaign features, then outcome differences are more plausibly caused by the campaign rather than by pre-existing customer differences. Because Hillstrom is a randomized marketing experiment, we expect strong balance.
 
-## Naive Average Treatment Effect
+## Observed Average Treatment Effect
 
 - Treatment conversion rate: {ate_results["treatment_conversion_rate"]:.2%}
 - Control conversion rate: {ate_results["control_conversion_rate"]:.2%}
-- Naive ATE: {ate_results["naive_ate_percentage_points"]:.2f} percentage points
+- Observed ATE: {ate_results["observed_ate_percentage_points"]:.2f} percentage points
 - Relative lift: {ate_results["relative_lift"]:.2%}
+- Standard error: {ate_confidence_interval["standard_error"]:.4f}
+- {ate_confidence_interval["confidence_level"]:.0%} CI: {ate_confidence_interval["ci_lower"]:.2%} to {ate_confidence_interval["ci_upper"]:.2%}
+- Two-proportion z-test p-value: {ate_confidence_interval["p_value"]:.4f}
 
-The naive ATE is the observed treatment-control conversion difference. In a randomized experiment, this estimate is already meaningful as a campaign lift measure.
+The raw formula is treatment conversion rate minus control conversion rate. Because Hillstrom is a randomized experiment, this observed ATE is already meaningful as a campaign lift measure.
 
 ## Covariate Balance Findings
 
@@ -350,9 +372,17 @@ Standardized mean differences below 0.10 are usually considered good balance. Va
 
 The propensity model AUC for predicting treatment assignment from pre-campaign features was {propensity_auc:.3f}. A low or moderate AUC suggests treatment assignment is not easily predictable from customer features. A very high AUC would warn that the treatment group may have been selected differently from control.
 
+Because balance checks show very low SMD and propensity AUC near 0.5, the observed treatment-control difference is more credible than a generic observational comparison.
+
 ## DoWhy Result
 
 {dowhy_text}
+
+DoWhy refuters are interpreted as robustness checks:
+
+- Random common cause refuter checks whether adding a random noise confounder changes the result.
+- Placebo treatment refuter checks whether a fake treatment destroys the effect.
+- Subset refuter, if supported by the installed DoWhy version, checks whether the estimate is stable on a subset.
 
 ## Limitations
 
@@ -370,6 +400,8 @@ Uplift scores are used for customer ranking; causal validation supports whether 
 
 ![ATE summary](../figures/causal_ate_summary.png)
 
+![ATE confidence interval](../figures/ate_confidence_interval.png)
+
 ![Treatment assignment predictability](../figures/treatment_assignment_predictability.png)
 """
 
@@ -385,12 +417,17 @@ def run_causal_validation() -> dict[str, object]:
 
     df = load_data()
     ate_results = calculate_naive_ate(df)
+    ate_confidence_interval = calculate_ate_confidence_interval(df)
     balance_df = calculate_covariate_balance(df)
     propensity_df, propensity_auc = estimate_propensity_scores(df)
     dowhy_results = run_dowhy_ate_if_available(df)
 
     (CAUSAL_REPORTS_DIR / "naive_ate.json").write_text(
         json.dumps(ate_results, indent=2),
+        encoding="utf-8",
+    )
+    (CAUSAL_REPORTS_DIR / "ate_confidence_interval.json").write_text(
+        json.dumps(ate_confidence_interval, indent=2),
         encoding="utf-8",
     )
     balance_df.to_csv(CAUSAL_REPORTS_DIR / "covariate_balance.csv", index=False)
@@ -409,8 +446,13 @@ def run_causal_validation() -> dict[str, object]:
         ate_results,
         FIGURES_DIR,
     )
+    plot_ate_confidence_interval(
+        ate_confidence_interval,
+        FIGURES_DIR / "ate_confidence_interval.png",
+    )
     write_causal_validation_report(
         ate_results,
+        ate_confidence_interval,
         balance_df,
         propensity_auc,
         dowhy_results,
@@ -420,8 +462,8 @@ def run_causal_validation() -> dict[str, object]:
     print(f"Treatment conversion rate: {ate_results['treatment_conversion_rate']:.2%}")
     print(f"Control conversion rate: {ate_results['control_conversion_rate']:.2%}")
     print(
-        "Naive ATE: "
-        f"{ate_results['naive_ate_percentage_points']:.2f} percentage points"
+        "Observed ATE: "
+        f"{ate_results['observed_ate_percentage_points']:.2f} percentage points"
     )
     print(f"Propensity model AUC: {propensity_auc:.3f}")
     print(
@@ -433,6 +475,7 @@ def run_causal_validation() -> dict[str, object]:
 
     return {
         "ate_results": ate_results,
+        "ate_confidence_interval": ate_confidence_interval,
         "propensity_auc": propensity_auc,
         "dowhy_status": dowhy_results["status"],
     }
@@ -622,8 +665,8 @@ def _plot_ate_summary(
             "No E-Mail group",
         ),
         (
-            "Naive ATE",
-            f"{ate_results['naive_ate_percentage_points']:+.2f} pp",
+            "Observed ATE",
+            f"{ate_results['observed_ate_percentage_points']:+.2f} pp",
             "Treatment minus control",
         ),
         (
@@ -665,7 +708,7 @@ def _plot_ate_summary(
             value,
             fontsize=22,
             fontweight="bold",
-            color=POSITIVE_COLOR if label in {"Naive ATE", "Relative Lift"} else TEXT_COLOR,
+            color=POSITIVE_COLOR if label in {"Observed ATE", "Relative Lift"} else TEXT_COLOR,
             transform=ax.transAxes,
         )
         ax.text(
@@ -767,6 +810,33 @@ def _format_balance_table(balance_df: pd.DataFrame) -> str:
             f"{row.abs_smd:.3f} | "
             f"{row.balance_flag} |"
         )
+
+    return "\n".join(lines)
+
+
+def _format_dowhy_refutations(dowhy_results: dict[str, object]) -> str:
+    """Format DoWhy refutation statuses for the markdown report."""
+    refutations = dowhy_results.get("refutations", {})
+    if not refutations:
+        return "No DoWhy refutation details were returned."
+
+    descriptions = {
+        "random_common_cause": "Random common cause",
+        "placebo_treatment_refuter": "Placebo treatment",
+        "subset_refuter": "Subset refuter",
+    }
+    lines = ["Refutation status:"]
+
+    for refuter_name, label in descriptions.items():
+        result = refutations.get(refuter_name)
+        if isinstance(result, dict):
+            status = result.get("status", "unknown")
+            method_name = result.get("method_name", refuter_name)
+            lines.append(f"- {label} (`{method_name}`): {status}")
+        elif result is not None:
+            lines.append(f"- {label}: completed")
+        else:
+            lines.append(f"- {label}: not returned")
 
     return "\n".join(lines)
 
