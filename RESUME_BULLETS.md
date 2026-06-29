@@ -11,3 +11,5 @@
 - Added advanced uplift evaluation with Qini curves, uplift calibration by decile, sample-size-aware policy values, and ATE confidence intervals to assess targeting performance beyond standard classification metrics.
 
 - Added robustness checks with an exploratory X-Learner, direct segment-level heterogeneity analysis, and alternative treatment definitions to honestly test whether uplift findings were stable or noisy.
+
+- Built and validated a causal uplift modeling pipeline that distinguishes campaign-level lift from individual-level targeting value, including robustness checks and honest limitation analysis around feature richness and heterogeneous treatment effects.

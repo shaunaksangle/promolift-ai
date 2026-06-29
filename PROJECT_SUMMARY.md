@@ -28,6 +28,16 @@ Robustness checks make the conclusion more credible by asking whether the same s
 
 The causal validation step estimates the observed average treatment effect, checks covariate balance with SMD, inspects propensity scores, and optionally uses DoWhy for an additional causal estimation/refutation layer.
 
+## Why Weak Uplift Is Still Useful
+
+PromoLift AI does not force a targeting win. It validates campaign-level lift, tests whether fine-grained targeting beats simpler policies, and honestly reports that richer behavioral features or a second uplift dataset may be needed to detect stronger individual-level treatment heterogeneity.
+
+The weak or noisy targeting signal should not be treated as a project failure. It is a useful business finding: the campaign appears to create measurable average lift, but the available features may not be rich enough to confidently identify strong individual-level responders.
+
+Hillstrom mainly provides broad customer variables such as recency, purchase history, channel, zip-code segment, and basic customer indicators. These features may miss the behavioral dimensions where treatment effects really vary, such as email open/click behavior, browsing intent, product affinity, device type, send timing, engagement history, repeat purchase behavior, and customer lifetime value. More rows alone may not solve this if the right behavioral features are missing. The short-term outcome window can also miss delayed or longer-term treatment effects.
+
+A future extension could run the same Qini, calibration, robustness, and causal-validation pipeline on a larger uplift benchmark dataset such as Criteo to test whether stronger heterogeneity appears with richer incrementality data. That comparison is future work, not part of the current implementation.
+
 ## Business Impact Explanation
 
 The project supports a more efficient campaign strategy. Rather than sending coupons to all customers or only to customers with high purchase probability, the business can prioritize customers with high predicted incremental response.

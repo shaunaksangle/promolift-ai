@@ -164,9 +164,21 @@ See `DEPLOYMENT.md` for deployment steps.
 
 PromoLift AI goes beyond a standard classification project. It combines causal inference, uplift modeling, treatment/control experiment design, rare conversion modeling, business decision-making, and dashboard storytelling. The result is a project that connects model outputs to a concrete marketing decision: who should receive a campaign.
 
-## Important Limitation
+## Limitations and Future Work
 
-Uplift scores are used for ranking and decision support, not as perfect individual causal truth. For any single customer, we only observe one outcome: what happened under treatment or what happened under control. The unobserved counterfactual outcome is estimated, not directly observed.
+PromoLift AI does not force a targeting win. It validates campaign-level lift, tests whether fine-grained targeting beats simpler policies, and honestly reports that richer behavioral features or a second uplift dataset may be needed to detect stronger individual-level treatment heterogeneity.
+
+The weak or noisy targeting signal should not be treated as a project failure. It is a useful business finding: the campaign appears to create measurable average lift, but the available features may not be rich enough to confidently identify strong individual-level responders.
+
+Key limitations:
+
+- Limited feature richness: Hillstrom includes broad customer variables such as recency, purchase history, channel, zip-code segment, and basic customer indicators. These features may not capture the real dimensions where treatment effects vary.
+- Missing behavioral signals: in a real business setting, stronger uplift signal could come from email open/click behavior, browsing behavior, product affinity, device type, send time or day, customer engagement history, repeat purchase behavior, and customer lifetime value.
+- More rows alone may not solve weak heterogeneity: if the right behavioral features are missing, a larger sample can make average effects more precise without making individual-level targeting much easier.
+- Short-term outcome window: Hillstrom measures short-term campaign outcomes, so longer-term effects such as delayed purchase, repeat purchase, churn reduction, or lifetime value impact may be missed.
+- Future benchmark comparison: a future extension could test the same Qini, calibration, robustness, and causal-validation pipeline on a larger uplift benchmark dataset such as Criteo. That is future work only and is not implemented in this version.
+
+Uplift scores are therefore used for ranking and decision support, not as perfect individual causal truth. For any single customer, we only observe one outcome: what happened under treatment or what happened under control. The unobserved counterfactual outcome is estimated, not directly observed.
 
 ## Final Project Pitch
 
