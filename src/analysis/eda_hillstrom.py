@@ -5,6 +5,8 @@ creates segment-level uplift tables, saves charts, and writes a concise EDA
 report for the PromoLift AI project.
 """
 
+from textwrap import wrap
+
 import pandas as pd
 
 from src.config import FIGURES_DIR, PROCESSED_DATA_DIR, REPORTS_DIR
@@ -818,7 +820,7 @@ def _plot_executive_summary(
         ),
     ]
 
-    fig, ax = plt.subplots(figsize=(13, 7))
+    fig, ax = plt.subplots(figsize=(15, 8))
     fig.patch.set_facecolor("#F8FAFC")
     ax.set_axis_off()
 
@@ -831,22 +833,27 @@ def _plot_executive_summary(
         color=TEXT_COLOR,
         transform=ax.transAxes,
     )
+    subtitle = (
+        "A treatment-control view shows why incremental lift matters before "
+        "building targeting models."
+    )
     ax.text(
         0.04,
         0.83,
-        "A treatment-control view shows why incremental lift matters before building targeting models.",
+        "\n".join(wrap(subtitle, width=105)),
         fontsize=13,
         color=MUTED_TEXT_COLOR,
         transform=ax.transAxes,
     )
 
-    card_width = 0.215
-    card_height = 0.34
-    card_y = 0.34
-    card_gap = 0.025
+    card_width = 0.22
+    card_height = 0.36
+    card_y = 0.36
+    card_gap = 0.02
 
     for index, (label, value, note) in enumerate(cards):
         card_x = 0.04 + index * (card_width + card_gap)
+        card_center = card_x + card_width / 2
         card = FancyBboxPatch(
             (card_x, card_y),
             card_width,
@@ -860,36 +867,44 @@ def _plot_executive_summary(
         ax.add_patch(card)
         value_color = POSITIVE_UPLIFT_COLOR if label == "Absolute Uplift" else TEXT_COLOR
         ax.text(
-            card_x + 0.025,
-            card_y + card_height - 0.09,
+            card_center,
+            card_y + card_height - 0.085,
             label,
             fontsize=11,
             fontweight="bold",
             color=MUTED_TEXT_COLOR,
+            ha="center",
             transform=ax.transAxes,
         )
         ax.text(
-            card_x + 0.025,
-            card_y + 0.16,
+            card_center,
+            card_y + 0.175,
             value,
-            fontsize=25,
+            fontsize=24,
             fontweight="bold",
             color=value_color,
+            ha="center",
             transform=ax.transAxes,
         )
         ax.text(
-            card_x + 0.025,
-            card_y + 0.07,
-            note,
-            fontsize=10,
+            card_center,
+            card_y + 0.075,
+            "\n".join(wrap(note, width=24)),
+            fontsize=9.5,
             color=MUTED_TEXT_COLOR,
+            ha="center",
+            va="center",
             transform=ax.transAxes,
         )
 
+    interpretation = (
+        "Interpretation: the email improved conversion at the aggregate level, "
+        "but segment charts show the response is not uniform. This motivates uplift modeling."
+    )
     ax.text(
         0.04,
         0.18,
-        "Interpretation: the email improved conversion at the aggregate level, but segment charts show the response is not uniform. This motivates uplift modeling.",
+        "\n".join(wrap(interpretation, width=125)),
         fontsize=12,
         color=TEXT_COLOR,
         transform=ax.transAxes,

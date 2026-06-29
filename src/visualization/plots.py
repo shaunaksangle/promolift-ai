@@ -5,6 +5,7 @@ are designed to explain model behavior and the limits of normal prediction.
 """
 
 from pathlib import Path
+from textwrap import wrap
 
 import pandas as pd
 from sklearn.metrics import (
@@ -23,6 +24,46 @@ BASELINE_COLOR = "#64748B"
 MODEL_COLOR = "#0F766E"
 POSITIVE_COLOR = "#15803D"
 WARNING_COLOR = "#B45309"
+
+
+def save_figure(fig, output_path) -> None:
+    """Save a Matplotlib figure at high resolution and close it."""
+    import matplotlib.pyplot as plt
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, dpi=300, bbox_inches="tight", facecolor=fig.get_facecolor())
+    plt.close(fig)
+
+
+def apply_readable_style(ax, title=None, xlabel=None, ylabel=None) -> None:
+    """Apply readable title, axis labels, ticks, and light grid styling."""
+    if title:
+        ax.set_title(title, fontsize=16, fontweight="bold", pad=16)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel, fontsize=12, labelpad=10)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel, fontsize=12, labelpad=10)
+
+    ax.tick_params(axis="both", labelsize=10, pad=8)
+    ax.grid(True, alpha=0.30)
+    ax.set_axisbelow(True)
+
+
+def wrap_labels(labels, width=18) -> list[str]:
+    """Wrap long category labels so they do not collide with chart marks."""
+    wrapped_labels = []
+    for label in labels:
+        label_text = str(label)
+        wrapped = wrap(
+            label_text,
+            width=width,
+            break_long_words=False,
+            break_on_hyphens=False,
+        )
+        wrapped_labels.append("\n".join(wrapped) if wrapped else label_text)
+
+    return wrapped_labels
 
 
 def plot_roc_curve(y_true, y_proba, output_path) -> None:

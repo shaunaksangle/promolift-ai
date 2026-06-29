@@ -12,6 +12,7 @@ from sklearn.pipeline import Pipeline
 
 from src.config import FIGURES_DIR, PROCESSED_DATA_DIR, REPORTS_DIR
 from src.features.build_features import build_preprocessor, get_feature_columns
+from src.visualization.plots import wrap_labels
 
 
 PROCESSED_DATA_PATH = PROCESSED_DATA_DIR / "hillstrom_mens_email.csv"
@@ -410,49 +411,105 @@ def _set_theme(plt, sns) -> None:
 
 def _plot_numeric_overlap(plt, sns, FuncFormatter, plot_df: pd.DataFrame) -> None:
     """Plot numeric covariate overlap between treatment and control."""
-    fig, axes = plt.subplots(2, 3, figsize=(16, 9))
+    fig, axes = plt.subplots(2, 3, figsize=(17, 10))
     axes = axes.flatten()
+    legend_handles = [
+        plt.Line2D([0], [0], color=GROUP_COLORS[group], linewidth=6)
+        for group in GROUP_ORDER
+    ]
 
     for ax, feature in zip(axes, NUMERIC_OVERLAP_FEATURES):
         is_binary = feature in {"mens", "womens", "newbie"}
-        sns.histplot(
-            data=plot_df,
-            x=feature,
-            hue="group",
-            hue_order=GROUP_ORDER,
-            stat="density",
-            common_norm=False,
-            element="step",
-            fill=True,
-            alpha=0.25,
-            bins=[-0.5, 0.5, 1.5] if is_binary else 24,
-            discrete=is_binary,
-            palette=GROUP_COLORS,
-            ax=ax,
-        )
+
+        if is_binary:
+            binary_balance = (
+                plot_df.groupby(["group", feature])
+                .size()
+                .reset_index(name="customers")
+            )
+            binary_balance["share"] = binary_balance.groupby("group")[
+                "customers"
+            ].transform(lambda values: values / values.sum())
+            pivot = (
+                binary_balance.pivot(index=feature, columns="group", values="share")
+                .reindex([0, 1])
+                .reindex(columns=GROUP_ORDER)
+                .fillna(0)
+            )
+
+            x_positions = [0, 1]
+            bar_width = 0.34
+            for group_index, group in enumerate(GROUP_ORDER):
+                offset = (group_index - 0.5) * bar_width
+                ax.bar(
+                    [position + offset for position in x_positions],
+                    pivot[group].tolist(),
+                    width=bar_width,
+                    color=GROUP_COLORS[group],
+                    alpha=0.85,
+                    label=group,
+                )
+
+            ax.set_xticks(x_positions)
+            ax.set_xticklabels(["No", "Yes"])
+            ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0%}"))
+            ax.set_ylabel("Share within group")
+            ax.grid(axis="y", alpha=0.30)
+        else:
+            sns.histplot(
+                data=plot_df,
+                x=feature,
+                hue="group",
+                hue_order=GROUP_ORDER,
+                stat="density",
+                common_norm=False,
+                element="step",
+                fill=True,
+                alpha=0.18,
+                linewidth=1.8,
+                bins=28,
+                palette=GROUP_COLORS,
+                ax=ax,
+            )
+            if ax.get_legend() is not None:
+                ax.get_legend().remove()
+            ax.set_ylabel("Density")
+            ax.grid(axis="y", alpha=0.30)
+
         ax.set_title(feature.replace("_", " ").title())
         ax.set_xlabel("Pre-campaign value")
-        ax.set_ylabel("Density")
-        ax.grid(axis="y", alpha=0.35)
+        ax.tick_params(axis="both", labelsize=10, pad=6)
 
     axes[-1].axis("off")
     fig.suptitle("Treatment Balance: Pre-Campaign Numeric Covariates")
     fig.text(
         0.5,
-        0.93,
+        0.925,
         "Do Mens E-Mail and No E-Mail customers look similar before treatment?",
         ha="center",
         color=MUTED_TEXT_COLOR,
         fontsize=13,
     )
-    fig.tight_layout(rect=[0, 0, 1, 0.91])
+    fig.legend(
+        legend_handles,
+        GROUP_ORDER,
+        title="",
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.875),
+        ncol=2,
+        frameon=False,
+        fontsize=11,
+    )
+    fig.subplots_adjust(left=0.07, right=0.98, top=0.80, bottom=0.08, wspace=0.28, hspace=0.48)
     fig.savefig(FIGURES_DIR / "causal_eda_numeric_overlap.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
 def _plot_categorical_balance(plt, sns, FuncFormatter, plot_df: pd.DataFrame) -> None:
     """Plot categorical covariate balance between treatment and control."""
-    fig, axes = plt.subplots(3, 1, figsize=(13, 13))
+    fig, axes = plt.subplots(3, 1, figsize=(15, 16))
+    legend_handles = None
+    legend_labels = None
 
     for ax, feature in zip(axes, CATEGORICAL_BALANCE_FEATURES):
         balance_df = (
@@ -473,11 +530,21 @@ def _plot_categorical_balance(plt, sns, FuncFormatter, plot_df: pd.DataFrame) ->
             palette=GROUP_COLORS,
             ax=ax,
         )
+        if ax.get_legend() is not None:
+            legend_handles, legend_labels = ax.get_legend_handles_labels()
+            ax.get_legend().remove()
+
         ax.set_title(feature.replace("_label", "").replace("_", " ").title())
         ax.set_xlabel("Share Within Treatment Group")
         ax.set_ylabel("")
         ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:.0%}"))
-        ax.legend(title="", loc="lower right")
+        ax.set_xlim(0, max(balance_df["share"].max() * 1.18, 0.05))
+        y_tick_positions = ax.get_yticks()
+        y_tick_labels = [tick.get_text() for tick in ax.get_yticklabels()]
+        ax.set_yticks(y_tick_positions)
+        ax.set_yticklabels(wrap_labels(y_tick_labels, width=22))
+        ax.tick_params(axis="y", labelsize=10, pad=18)
+        ax.tick_params(axis="x", labelsize=10, pad=6)
         ax.grid(axis="x", alpha=0.35)
 
     fig.suptitle("Treatment Balance: Categorical Customer Segments")
@@ -489,7 +556,19 @@ def _plot_categorical_balance(plt, sns, FuncFormatter, plot_df: pd.DataFrame) ->
         color=MUTED_TEXT_COLOR,
         fontsize=13,
     )
-    fig.tight_layout(rect=[0, 0, 1, 0.92])
+    if legend_handles and legend_labels:
+        fig.legend(
+            legend_handles,
+            legend_labels,
+            title="",
+            loc="upper center",
+            bbox_to_anchor=(0.5, 0.89),
+            ncol=2,
+            frameon=False,
+            fontsize=11,
+        )
+
+    fig.subplots_adjust(left=0.32, right=0.96, top=0.84, bottom=0.06, hspace=0.68)
     fig.savefig(
         FIGURES_DIR / "causal_eda_categorical_balance.png",
         dpi=300,
